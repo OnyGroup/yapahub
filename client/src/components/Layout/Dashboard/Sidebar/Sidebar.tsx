@@ -25,6 +25,15 @@ export default function Sidebar({ children }: { children: React.ReactNode }) {
     }
   }, [setIsNarrow])
 
+  // Sync isNarrow with the sidebar's expanded/collapsed state
+  useEffect(() => {
+    if (!isShowSidebar) {
+      setIsNarrow(true); // Collapse the sidebar if it's hidden
+    } else {
+      setIsNarrow(localStorage.getItem('isNarrow') === 'true'); // Restore the saved state
+    }
+  }, [isShowSidebar]);
+
   return (
     <div
       className={classNames('sidebar d-flex flex-column position-fixed h-100 border-end', {
@@ -34,22 +43,22 @@ export default function Sidebar({ children }: { children: React.ReactNode }) {
       id="sidebar"
     >
       <div className="sidebar-brand d-none d-md-flex align-items-center justify-content-center">
-        <svg
-          className="sidebar-brand-full"
+        {/* Full Logo (Expanded Sidebar) */}
+        <img
+          className={classNames('sidebar-brand-full', { 'd-none': isNarrow })}
+          src="/images/yapa_full.svg"
+          alt="Yapa Hub Logo"
           width="118"
           height="46"
-        >
-          <title>CoreUI Logo</title>
-          <use xlinkHref="/assets/brand/coreui.svg#full" />
-        </svg>
-        <svg
-          className="sidebar-brand-narrow d-none"
+        />
+        {/* Signet Logo (Collapsed Sidebar) */}
+        <img
+          className={classNames('sidebar-brand-narrow', { 'd-none': !isNarrow })}
+          src="/images/yapa_signet.png"
+          alt="Yapa Hub Signet"
           width="46"
           height="46"
-        >
-          <title>CoreUI Logo</title>
-          <use xlinkHref="/assets/brand/coreui.svg#signet" />
-        </svg>
+        />
       </div>
 
       <div className="sidebar-nav flex-fill border-top">
