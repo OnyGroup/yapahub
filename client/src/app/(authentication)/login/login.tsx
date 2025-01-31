@@ -27,17 +27,12 @@ export default function Login() {
     setError('')
 
     try {
-      // Call the login function which communicates with Django backend
       const { access, refresh } = await loginUser({ username, password })
-
-      // Print tokens to see them
-      console.log("accessToken" + access);
       
       // Store JWT tokens in localStorage
       localStorage.setItem('accessToken', access)
       localStorage.setItem('refreshToken', refresh)
 
-      // Redirect to callback URL (e.g., dashboard)
       router.push('/dashboard')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed. Please check your credentials.')

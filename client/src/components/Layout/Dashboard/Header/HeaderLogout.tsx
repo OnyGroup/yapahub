@@ -1,15 +1,29 @@
 'use client'
 
-import { signOut } from 'next-auth/react'
+import { useRouter } from "next/navigation";
+import { logout } from "@/services/auth";
 
 export default function HeaderLogout({ children }: { children: React.ReactNode }) {
-  const logout = async () => {
-    await signOut({ callbackUrl: '/login' })
-  }
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    const refreshToken = localStorage.getItem("refreshToken");
+    if (!refreshToken) {
+      console.error("No refresh token found");
+      return;
+    }
+
+    const success = await logout(refreshToken);
+
+    if (success) {
+      router.push("/login");
+    }
+  };
 
   return (
-    <div onClick={logout} onKeyDown={logout} role="button" tabIndex={0}>
+    <div onClick={handleLogout} onKeyDown={handleLogout} role="button" tabIndex={0}>
       {children}
     </div>
+
   )
 }

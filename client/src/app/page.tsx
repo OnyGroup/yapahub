@@ -9,6 +9,7 @@ export default function Home() {
 
   useEffect(() => {
     const accessToken = localStorage.getItem('accessToken');
+  
     if (!accessToken) {
       router.push('/login');
     } else {
