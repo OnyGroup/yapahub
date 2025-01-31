@@ -59,7 +59,7 @@ export default async function Page() {
                     )
                   </span>
                 </div>
-                <div>{dict.dashboard.featured.user}</div>
+                <div>User</div>
               </div>
               <Dropdown align="end">
                 <DropdownToggle
@@ -72,9 +72,9 @@ export default async function Page() {
                 </DropdownToggle>
 
                 <DropdownMenu>
-                  <DropdownItem href="#/action-1">{dict.dashboard.featured.action.action1}</DropdownItem>
-                  <DropdownItem href="#/action-2">{dict.dashboard.featured.action.action2}</DropdownItem>
-                  <DropdownItem href="#/action-3">{dict.dashboard.featured.action.action3}</DropdownItem>
+                  <DropdownItem href="#/action-1">Action</DropdownItem>
+                  <DropdownItem href="#/action-2">Action</DropdownItem>
+                  <DropdownItem href="#/action-3">Action</DropdownItem>
                 </DropdownMenu>
               </Dropdown>
             </CardBody>
@@ -96,7 +96,7 @@ export default async function Page() {
                     )
                   </span>
                 </div>
-                <div>{dict.dashboard.featured.income}</div>
+                <div>Income</div>
               </div>
               <Dropdown align="end">
                 <DropdownToggle
