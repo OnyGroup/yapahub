@@ -9,51 +9,38 @@ import { faLock } from '@fortawesome/free-solid-svg-icons'
 import { useState } from 'react'
 import Link from 'next/link'
 import InputGroupText from 'react-bootstrap/InputGroupText'
-import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import useDictionary from '@/locales/dictionary-hook'
+import { loginUser } from '@/services/auth'
 
-export default function Login({ callbackUrl }: { callbackUrl: string }) {
+export default function Login() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
   const router = useRouter()
   const dict = useDictionary()
 
-  const login = async (formData: FormData) => {
+  const login = async (e: React.FormEvent) => {
+    e.preventDefault()
     setSubmitting(true)
+    setError('')
 
     try {
-      const res = await signIn('credentials', {
-        username: formData.get('username'),
-        password: formData.get('password'),
-        redirect: false,
-        callbackUrl,
-      })
+      // Call the login function which communicates with Django backend
+      const { access, refresh } = await loginUser({ username, password })
 
-      if (!res) {
-        setError('Login failed')
-        return
-      }
+      // Print tokens to see them
+      console.log("accessToken" + access);
+      
+      // Store JWT tokens in localStorage
+      localStorage.setItem('accessToken', access)
+      localStorage.setItem('refreshToken', refresh)
 
-      const { ok, url, error: err } = res
-
-      if (!ok) {
-        if (err) {
-          setError(err)
-          return
-        }
-
-        setError('Login failed')
-        return
-      }
-
-      if (url) {
-        router.push(url)
-      }
+      // Redirect to callback URL (e.g., dashboard)
+      router.push('/dashboard')
     } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message)
-      }
+      setError(err instanceof Error ? err.message : 'Login failed. Please check your credentials.')
     } finally {
       setSubmitting(false)
     }
@@ -61,47 +48,45 @@ export default function Login({ callbackUrl }: { callbackUrl: string }) {
 
   return (
     <>
-      <Alert
-        variant="danger"
-        show={error !== ''}
-        onClose={() => setError('')}
-        dismissible
-      >
-        {error}
-      </Alert>
-      <Form action={login}>
+      {error && (
+        <Alert
+          variant="danger"
+          onClose={() => setError('')}
+          dismissible
+        >
+          {error}
+        </Alert>
+      )}
+
+      <Form onSubmit={login}>
+        {/* Username Field */}
         <InputGroup className="mb-3">
           <InputGroupText>
-            <FontAwesomeIcon
-              icon={faUser}
-              fixedWidth
-            />
+            <FontAwesomeIcon icon={faUser} fixedWidth />
           </InputGroupText>
           <FormControl
             name="username"
             required
             disabled={submitting}
-            placeholder={dict.login.form.username}
             aria-label="Username"
-            defaultValue="Username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
           />
         </InputGroup>
 
+        {/* Password Field */}
         <InputGroup className="mb-3">
           <InputGroupText>
-            <FontAwesomeIcon
-              icon={faLock}
-              fixedWidth
-            />
+            <FontAwesomeIcon icon={faLock} fixedWidth />
           </InputGroupText>
           <FormControl
             type="password"
             name="password"
             required
             disabled={submitting}
-            placeholder={dict.login.form.password}
-            aria-label="Password"
-            defaultValue="Password"
+            // aria-label="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
           />
         </InputGroup>
 
@@ -113,7 +98,7 @@ export default function Login({ callbackUrl }: { callbackUrl: string }) {
               type="submit"
               disabled={submitting}
             >
-              {dict.login.form.submit}
+              {submitting ? 'Logging in...' : dict.login.form.submit}
             </Button>
           </Col>
           <Col xs={6} className="text-end">
