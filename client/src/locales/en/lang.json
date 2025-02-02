@@ -3,8 +3,6 @@
     "title": "Login",
     "description": "Sign in to your account",
     "form": {
-      "username": "Username",
-      "password": "Password",
       "submit": "Login"
     },
     "forgot_password": "Forgot password?",
