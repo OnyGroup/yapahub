@@ -16,8 +16,8 @@ class SendMessageView(generics.CreateAPIView):
     serializer_class = MessageSerializer
 
     def perform_create(self, serializer):
-        # Set the sender to the currently authenticated user
-        serializer.save(sender=self.request.user)
+        # Automatically set the sender to the authenticated user
+        serializer.save(sender=self.request.user)  # Use the user from the JWT token
 
 class ViewMessageView(generics.RetrieveAPIView):
     permission_classes = [IsAuthenticated]
