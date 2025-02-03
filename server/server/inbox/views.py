@@ -1,34 +1,34 @@
-from django.shortcuts import render, get_object_or_404
-from django.contrib.auth.decorators import login_required
+from rest_framework import generics
+from rest_framework.permissions import IsAuthenticated
 from .models import Message, Ticket
+from .serializers import MessageSerializer, TicketSerializer
 
-@login_required
-def inbox(request):
-    # Fetch messages for the logged-in user
-    messages = Message.objects.filter(recipient=request.user).order_by('-timestamp')
-    return render(request, 'inbox/inbox.html', {'messages': messages})
+class InboxView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]  # Ensure the user is authenticated
+    serializer_class = MessageSerializer
 
-@login_required
-def send_message(request):
-    if request.method == 'POST':
-        recipient_id = request.POST.get('recipient')
-        subject = request.POST.get('subject')
-        body = request.POST.get('body')
-        recipient = get_object_or_404(User, id=recipient_id)
-        Message.objects.create(sender=request.user, recipient=recipient, subject=subject, body=body)
-        return redirect('inbox')
-    return render(request, 'inbox/send_message.html')
+    def get_queryset(self):
+        # Return messages for the logged-in user
+        return Message.objects.filter(recipient=self.request.user).order_by('-timestamp')
 
-@login_required
-def view_ticket(request, ticket_id):
-    ticket = get_object_or_404(Ticket, id=ticket_id)
-    return render(request, 'inbox/view_ticket.html', {'ticket': ticket})
+class SendMessageView(generics.CreateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = MessageSerializer
 
-@login_required
-def create_ticket(request):
-    if request.method == 'POST':
-        subject = request.POST.get('subject')
-        description = request.POST.get('description')
-        Ticket.objects.create(customer=request.user, subject=subject, description=description)
-        return redirect('inbox')
-    return render(request, 'inbox/create_ticket.html')
+    def perform_create(self, serializer):
+        # Set the sender to the currently authenticated user
+        serializer.save(sender=self.request.user)
+
+class ViewMessageView(generics.RetrieveAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = MessageSerializer
+    queryset = Message.objects.all()
+
+class TicketView(generics.RetrieveAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = TicketSerializer
+    queryset = Ticket.objects.all()
+
+class CreateTicketView(generics.CreateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = TicketSerializer
