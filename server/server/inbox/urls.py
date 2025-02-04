@@ -7,4 +7,6 @@ urlpatterns = [
     path('view_message/<int:pk>/', views.ViewMessageView.as_view(), name='view_message'),
     path('ticket/<int:pk>/', views.TicketView.as_view(), name='view_ticket'),
     path('create_ticket/', views.CreateTicketView.as_view(), name='create_ticket'),
+    path('conversation/<str:username>/', views.ConversationView.as_view(), name='conversation'),
 ]
+

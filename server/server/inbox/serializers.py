@@ -18,10 +18,13 @@ class MessageSerializer(serializers.ModelSerializer):
         return user
 
     def create(self, validated_data):
-        # Extract recipient User instance
-        recipient = validated_data.pop('recipient')
-
-        # Create the message with sender (already auto-set by CurrentUserDefault) and recipient User instances
+        recipient_username = validated_data.pop("recipient")  # Get the username
+        try:
+            recipient = User.objects.get(username=recipient_username)  # Convert to User object
+        except User.DoesNotExist:
+            raise serializers.ValidationError({"recipient": "Recipient user does not exist."})
+        
+        # Create the message with the recipient as a User object
         message = Message.objects.create(recipient=recipient, **validated_data)
         return message
 
