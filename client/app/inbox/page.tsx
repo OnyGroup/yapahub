@@ -55,8 +55,6 @@ const Inbox = () => {
       body: formData.get("body") as string,
     }
 
-    console.log("New Message Payload:", newMessage);
-
     try {
       await axios.post("http://127.0.0.1:8000/inbox/send_message/", newMessage, {
         headers: {

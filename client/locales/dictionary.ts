@@ -12,8 +12,8 @@ type Locale = keyof typeof dictionaries
 
 export const getLocales = () => Object.keys(dictionaries) as Array<Locale>
 
-export const getLocale = (): Locale => {
-  const localeCookies = cookies().get('locale')?.value ?? defaultLocale
+export const getLocale = async (): Promise<Locale> => {
+  const localeCookies = (await cookies()).get('locale')?.value ?? defaultLocale
 
   if (!getLocales().includes(localeCookies as Locale)) {
     return defaultLocale
@@ -23,6 +23,6 @@ export const getLocale = (): Locale => {
 }
 
 export const getDictionary = async () => {
-  const locale = getLocale()
+  const locale = await getLocale()
   return dictionaries[locale]()
 }

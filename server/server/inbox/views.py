@@ -8,12 +8,13 @@ from django.db.models import Q
 from django.contrib.auth.models import User
 
 class InboxView(generics.ListAPIView):
-    permission_classes = [IsAuthenticated]  # Ensure the user is authenticated
+    permission_classes = [IsAuthenticated]
     serializer_class = MessageSerializer
 
     def get_queryset(self):
-        # Return messages for the logged-in user
-        return Message.objects.filter(recipient=self.request.user).order_by('-timestamp')
+        return Message.objects.filter(
+            Q(sender=self.request.user) | Q(recipient=self.request.user)
+        ).order_by('-timestamp')  # Newest messages first
 
 class SendMessageView(generics.CreateAPIView):
     permission_classes = [IsAuthenticated]
