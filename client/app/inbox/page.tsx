@@ -13,12 +13,12 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 
 // Define types for the message
 interface Message {
-  id: number
-  sender: string
-  recipient: string
-  subject: string
-  body: string
-  timestamp: string
+  id: number;
+  sender_username: string; // Username of the sender
+  recipient_username: string; // Username of the recipient
+  subject: string;
+  body: string;
+  timestamp: string;
 }
 
 const Inbox = () => {
@@ -76,15 +76,14 @@ const Inbox = () => {
 
   const groupedMessages = messages.reduce(
     (acc, message) => {
-      if (!acc[message.sender]) {
-        acc[message.sender] = []
+      if (!acc[message.sender_username]) {
+        acc[message.sender_username] = [];
       }
-      acc[message.sender].push(message)
-      acc[message.sender].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()) // Sort oldest to latest
-      return acc
+      acc[message.sender_username].push(message);
+      return acc;
     },
     {} as Record<string, Message[]>,
-  )
+  );
   
 
   return (
@@ -112,24 +111,30 @@ const Inbox = () => {
           </Dialog>
         </div>
         <ScrollArea className="h-[calc(100vh-120px)]">
-          {Object.entries(groupedMessages).map(([sender, senderMessages]) => (
-            <div
-              key={sender}
-              className={`p-4 cursor-pointer hover:bg-gray-100 ${selectedSender === sender ? "bg-gray-200" : ""}`}
-              onClick={() => setSelectedSender(sender)}
-            >
-              <div className="flex items-center space-x-3">
+        {Object.entries(groupedMessages).map(([senderUsername, senderMessages]) => (
+          <Card
+            key={senderUsername}
+            onClick={() => setSelectedSender(senderUsername)}
+            className={`mb-4 cursor-pointer ${
+              selectedSender === senderUsername ? "border-primary" : ""
+            }`}
+          >
+            <CardHeader>
+              <div className="flex items-center space-x-4">
                 <Avatar>
-                  <AvatarImage src={`https://api.dicebear.com/6.x/initials/svg?seed=${sender}`} />
-                  <AvatarFallback>{sender[0].toUpperCase()}</AvatarFallback>
+                  <AvatarImage src={`https://ui-avatars.com/api/?name=${senderUsername}`} />
+                  <AvatarFallback>{senderUsername[0].toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="font-semibold">{sender}</p>
-                  <p className="text-sm text-gray-500 truncate">{senderMessages[senderMessages.length - 1].body}</p>
+                  <CardTitle>{senderUsername}</CardTitle>
+                  <CardContent className="text-sm text-muted-foreground">
+                    {senderMessages[senderMessages.length - 1]?.body}
+                  </CardContent>
                 </div>
               </div>
-            </div>
-          ))}
+            </CardHeader>
+          </Card>
+        ))}
         </ScrollArea>
       </div>
       <div className="flex-1 flex flex-col">
