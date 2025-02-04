@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     # my custom apps
     'auth_app',
     'inbox',
+    'analytics',
 
     # third party apps
     'rest_framework',
