@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import axios from "axios"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { useToast } from "@/components/ui/use-toast";
 
 // Define types for the message
 interface Message {
@@ -25,6 +26,8 @@ const Inbox = () => {
   const [loading, setLoading] = useState<boolean>(true)
   const [selectedSender, setSelectedSender] = useState<string | null>(null)
   const [replyTo, setReplyTo] = useState<number | null>(null)
+  const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchMessages = async () => {
@@ -46,32 +49,49 @@ const Inbox = () => {
   }, [])
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    const formData = new FormData(event.currentTarget)
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
     const newMessage = {
       recipient: formData.get("recipient") as string,
       subject: formData.get("subject") as string,
       body: formData.get("body") as string,
-    }
-
+    };
+  
     try {
       await axios.post("http://127.0.0.1:8000/inbox/send_message/", newMessage, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
         },
-      })
+      });
+  
+      // Close the dialog
+      setIsDialogOpen(false);
+  
+      // Show success toast
+      toast({
+        title: "Message Sent",
+        description: "Your message was sent successfully.",
+        variant: "default",
+      });
+  
       // Refresh messages after sending
       const response = await axios.get<Message[]>("http://127.0.0.1:8000/inbox/", {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
         },
-      })
-      setMessages(response.data)
-      setReplyTo(null)
+      });
+      setMessages(response.data);
+      setReplyTo(null);
     } catch (error) {
-      console.error("Failed to send message", error)
+      // Show error toast
+      toast({
+        title: "Error",
+        description: "Failed to send message. Please try again.",
+        variant: "destructive",
+      });
+      console.error("Failed to send message", error);
     }
-  }
+  };
 
   const groupedMessages = messages.reduce(
     (acc, message) => {
@@ -97,9 +117,9 @@ const Inbox = () => {
       <div className="w-1/3 bg-white border-r">
         <div className="p-4">
           <h1 className="text-2xl font-semibold mb-4">Inbox</h1>
-          <Dialog>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="w-full">New Message</Button>
+              <Button className="w-full" onClick={() => setIsDialogOpen(true)}>New Message</Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
