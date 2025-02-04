@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -80,10 +79,17 @@ const Inbox = () => {
         acc[message.sender_username] = [];
       }
       acc[message.sender_username].push(message);
+  
+      // Sort messages by timestamp (oldest to newest)
+      acc[message.sender_username].sort((a, b) => 
+        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+      );
+  
       return acc;
     },
-    {} as Record<string, Message[]>,
+    {} as Record<string, Message[]>
   );
+  
   
 
   return (
