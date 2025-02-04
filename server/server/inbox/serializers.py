@@ -2,8 +2,8 @@ from rest_framework import serializers
 from .models import Message, Ticket, User
 
 class MessageSerializer(serializers.ModelSerializer):
-    sender = serializers.HiddenField(default=serializers.CurrentUserDefault())  # Automatically assign sender from the JWT token
-    recipient = serializers.CharField()  # Accepts username or email
+    sender = serializers.CharField(source="sender.username")  # Serialize sender as username
+    recipient = serializers.CharField(source="recipient.username")  # Serialize recipient as username
 
     class Meta:
         model = Message
