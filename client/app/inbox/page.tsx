@@ -80,10 +80,12 @@ const Inbox = () => {
         acc[message.sender] = []
       }
       acc[message.sender].push(message)
+      acc[message.sender].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()) // Sort oldest to latest
       return acc
     },
     {} as Record<string, Message[]>,
   )
+  
 
   return (
     <div className="flex h-screen bg-gray-100">
