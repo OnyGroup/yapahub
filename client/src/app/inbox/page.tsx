@@ -28,7 +28,7 @@ const Inbox = () => {
       try {
         const response = await axios.get<Message[]>("http://127.0.0.1:8000/inbox/", {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
           },
         })
         setMessages(response.data)
@@ -54,7 +54,7 @@ const Inbox = () => {
     try {
       await axios.post("http://127.0.0.1:8000/inbox/send_message/", newMessage, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
         },
       })
       setIsComposing(false)
