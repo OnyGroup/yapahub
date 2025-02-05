@@ -28,7 +28,7 @@ class AnalyticsDashboard(APIView):
 
         top_selling_products = Sale.objects.filter(timestamp__gte=start_date).values('product__name').annotate(
             total_sold=Sum('quantity')
-        ).order_by('-total_sold')[:5]
+        ).order_by('-total_sold')[:10]
 
         recent_sales = Sale.objects.filter(
             timestamp__gte=now() - timedelta(days=7)
