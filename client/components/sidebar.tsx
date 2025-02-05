@@ -8,7 +8,7 @@ const menuItems = [
   { icon: Inbox, text: "Unified Inbox", href: "/inbox" },
   { icon: Megaphone, text: "Marketing", href: "/dashboard/marketing" },
   { icon: Zap, text: "Automation", href: "/dashboard/automation" },
-  { icon: BarChart3, text: "Analytics", href: "/dashboard/analytics" },
+  { icon: BarChart3, text: "Analytics", href: "/analytics" },
 ]
 
 interface SidebarProps {
