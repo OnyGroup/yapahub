@@ -10,6 +10,7 @@ import {
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // Define TypeScript interfaces for the data
 interface Product {
@@ -36,16 +37,17 @@ const AnalyticsDashboard = () => {
     average_order_value: 0,
     top_selling_products: [],
     recent_sales: 0,
-    low_stock_products: [], // Initialized as an empty array
+    low_stock_products: [],
     inventory_turnover_rate: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [timePeriod, setTimePeriod] = useState("30"); // Default to 30 days
 
   // Fetch analytics data from the backend
   useEffect(() => {
     const fetchAnalyticsData = async () => {
       try {
-        const response = await axios.get("http://127.0.0.1:8000/analytics/sales/dashboard/", {
+        const response = await axios.get(`http://127.0.0.1:8000/analytics/sales/dashboard/?time_period=${timePeriod}`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
           },
@@ -58,7 +60,7 @@ const AnalyticsDashboard = () => {
           average_order_value: response.data.average_order_value || 0,
           top_selling_products: response.data.top_selling_products || [],
           recent_sales: response.data.recent_sales || 0,
-          low_stock_products: response.data.low_stock_products || [], // Ensure it's an array
+          low_stock_products: response.data.low_stock_products || [],
           inventory_turnover_rate: response.data.inventory_turnover_rate || 0,
         };
 
@@ -71,7 +73,7 @@ const AnalyticsDashboard = () => {
     };
 
     fetchAnalyticsData();
-  }, []);
+  }, [timePeriod]);
 
   if (loading) {
     return <p>Loading...</p>;
@@ -82,7 +84,7 @@ const AnalyticsDashboard = () => {
   }
 
   // Prepare data for the bar chart
-  const chartData = analyticsData.top_selling_products?.map((item) => ({
+  const topSellingChartData = analyticsData.top_selling_products?.map((item) => ({
     name: item.product__name,
     sales: item.total_sold,
   })) || [];
@@ -90,6 +92,21 @@ const AnalyticsDashboard = () => {
   return (
     <div className="p-6">
       <h1 className="text-3xl font-bold mb-6">Business Performance Dashboard</h1>
+
+      {/* Time Period Selector */}
+      <div className="mb-6">
+        <label className="mr-2">Select Time Period:</label>
+        <Select value={timePeriod} onValueChange={(value) => setTimePeriod(value)}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Select a time period" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="7">Last 7 Days</SelectItem>
+            <SelectItem value="30">Last 30 Days</SelectItem>
+            <SelectItem value="90">Last 90 Days</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
       {/* Key Metrics Section */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
@@ -128,7 +145,7 @@ const AnalyticsDashboard = () => {
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={chartData}>
+            <BarChart data={topSellingChartData}>
               <XAxis dataKey="name" />
               <YAxis />
               <Tooltip />
@@ -145,7 +162,7 @@ const AnalyticsDashboard = () => {
           <CardTitle>Low Stock Products</CardTitle>
         </CardHeader>
         <CardContent>
-          <ScrollArea className="h-[200px]">
+          <ScrollArea className="h-[auto]">
             <ul>
               {analyticsData.low_stock_products?.length > 0 ? (
                 analyticsData.low_stock_products.map((product) => (
