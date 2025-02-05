@@ -113,8 +113,8 @@ const Inbox = () => {
   
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      <div className="w-1/3 bg-white border-r">
+    <div className="flex flex-1 overflow-hidden">
+      <div className="w-1/3 border-r bg-background">
         <div className="p-4">
           <h1 className="text-2xl font-semibold mb-4">Inbox</h1>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -136,12 +136,12 @@ const Inbox = () => {
             </DialogContent>
           </Dialog>
         </div>
-        <ScrollArea className="h-[calc(100vh-120px)]">
+        <ScrollArea className="h-[calc(100vh-10rem)]">
         {Object.entries(groupedMessages).map(([senderUsername, senderMessages]) => (
           <Card
             key={senderUsername}
             onClick={() => setSelectedSender(senderUsername)}
-            className={`mb-4 cursor-pointer ${
+            className={`mb-4 mx-4 cursor-pointer ${
               selectedSender === senderUsername ? "border-primary" : ""
             }`}
           >
@@ -163,7 +163,7 @@ const Inbox = () => {
         ))}
         </ScrollArea>
       </div>
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col overflow-hidden">
         {selectedSender ? (
           <>
             <div className="bg-white p-4 border-b">
@@ -175,9 +175,9 @@ const Inbox = () => {
                   <CardContent className="p-4">
                     <div className="flex justify-between items-start mb-2">
                       <h3 className="font-semibold">{message.subject}</h3>
-                      <span className="text-sm text-gray-500">{new Date(message.timestamp).toLocaleString()}</span>
+                      <span className="text-sm text-muted-foreground">{new Date(message.timestamp).toLocaleString()}</span>
                     </div>
-                    <p className="text-gray-700 mb-4">{message.body}</p>
+                    <p className="text-foreground mb-4">{message.body}</p>
                     <Button variant="outline" size="sm" onClick={() => setReplyTo(message.id)}>
                       Reply
                     </Button>
@@ -207,7 +207,7 @@ const Inbox = () => {
             )}
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center text-gray-500">
+          <div className="flex-1 flex items-center justify-center text-muted-foreground">
             Select a conversation to view messages
           </div>
         )}

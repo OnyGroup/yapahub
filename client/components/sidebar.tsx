@@ -1,14 +1,15 @@
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { LayoutDashboard, Inbox, Megaphone, Zap, BarChart3, ChevronLeft, ChevronRight } from "lucide-react"
 
 const menuItems = [
   { icon: LayoutDashboard, text: "Dashboard", href: "/dashboard" },
-  { icon: Inbox, text: "Unified Inbox", href: "/inbox" },
+  { icon: Inbox, text: "Inbox", href: "/dashboard/inbox" },
+  { icon: BarChart3, text: "Analytics", href: "/dashboard/analytics" },
   { icon: Megaphone, text: "Marketing", href: "/dashboard/marketing" },
   { icon: Zap, text: "Automation", href: "/dashboard/automation" },
-  { icon: BarChart3, text: "Analytics", href: "/analytics" },
 ]
 
 interface SidebarProps {
@@ -17,6 +18,8 @@ interface SidebarProps {
 }
 
 export function Sidebar({ collapsed, onCollapse }: SidebarProps) {
+  const pathname = usePathname()
+
   return (
     <div
       className={cn(
@@ -40,6 +43,7 @@ export function Sidebar({ collapsed, onCollapse }: SidebarProps) {
                   className={cn(
                     "w-full justify-start text-primary-foreground hover:bg-primary-foreground/10",
                     collapsed ? "px-2" : "px-4",
+                    pathname === item.href && "bg-primary-foreground/20",
                   )}
                 >
                   <item.icon className="h-5 w-5" />

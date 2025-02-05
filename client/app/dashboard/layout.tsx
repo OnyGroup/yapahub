@@ -1,9 +1,9 @@
 "use client"
 
+import type React from "react"
 import { useState } from "react"
 import { Sidebar } from "@/components/sidebar"
 import { Header } from "@/components/header"
-import type React from "react" // Added import for React
 
 export default function DashboardLayout({
   children,
