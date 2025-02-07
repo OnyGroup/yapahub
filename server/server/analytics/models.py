@@ -20,6 +20,12 @@ class Sale(models.Model):
     def __str__(self):
         return f"Sale of {self.product.name} ({self.quantity})"
 
+    def save(self, *args, **kwargs):
+        # Automatically calculate total_price if it's not set
+        if not self.total_price:
+            self.total_price = self.product.price * self.quantity
+        super().save(*args, **kwargs)
+
 class CustomerActivity(models.Model):
     customer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='activities')
     action = models.CharField(max_length=255)  # e.g., "Purchase", "Signup", "Refund"
