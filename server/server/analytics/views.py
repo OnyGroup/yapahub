@@ -99,7 +99,7 @@ class CustomerDashboard(APIView):
 
         top_clv_customers = User.objects.annotate(
             total_spent=Sum('sales__total_price')
-        ).order_by('-total_spent').values('username', 'total_spent')[:5]
+        ).order_by('-total_spent').values('username', 'total_spent')[:10]
 
         # Segmentation by Spending
         high_spenders = User.objects.annotate(
