@@ -9,7 +9,7 @@ import { Toaster } from "@/components/ui/toaster"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Yapahub Dashboard",
+  title: "Yapahub",
   description: "Professional dashboard for Yapahub",
 }
 
@@ -18,7 +18,7 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  const dictionary = await getDictionary() // Fetch dictionary
+  const dictionary = await getDictionary() 
 
   return (
     <html lang="en">
@@ -26,7 +26,7 @@ export default async function RootLayout({
         <DictionaryProvider dictionary={dictionary}>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
             {children}
-            <Toaster /> {/* Ensure Toaster is placed inside ThemeProvider but outside children */}
+            <Toaster />
           </ThemeProvider>
         </DictionaryProvider>
       </body>
