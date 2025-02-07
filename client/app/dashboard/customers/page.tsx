@@ -299,7 +299,7 @@ const CustomersDashboard = () => {
           <ul>
             <li className="flex justify-between py-2">
               <span>Repeat Purchase Rate</span>
-              <Badge variant="default">{customerData.repeat_purchase_rate.toFixed(2)}%</Badge>
+              <Badge variant="success">{customerData.repeat_purchase_rate.toFixed(2)}%</Badge>
             </li>
             <li className="flex justify-between py-2">
               <span>Average Purchase Frequency</span>
