@@ -31,7 +31,7 @@ export function Sidebar({ collapsed, onCollapse }: SidebarProps) {
       )}
     >
       <div className="flex items-center justify-between p-4">
-        {!collapsed && <span className="text-2xl font-bold">Yapahub</span>}
+        {!collapsed && <span className="text-2xl font-bold">YapaHub</span>}
         <Button variant="ghost" size="icon" onClick={() => onCollapse(!collapsed)} className="ml-auto">
           {collapsed ? <ChevronRight /> : <ChevronLeft />}
         </Button>
