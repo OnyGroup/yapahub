@@ -22,4 +22,5 @@ urlpatterns = [
     path('auth/', include('auth_app.urls')),
     path('inbox/', include('inbox.urls')),
     path('analytics/', include('analytics.urls')),
+    path('marketing/', include('marketing.urls')),
 ]
