@@ -16,7 +16,6 @@ from pathlib import Path
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
@@ -28,6 +27,8 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
+# login url
+LOGIN_URL = '/auth/login/'
 
 # Application definition
 
@@ -40,12 +41,16 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     # my custom apps
     'auth_app',
+    'inbox',
+    'analytics',
+    'marketing',
 
     # third party apps
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
     'rest_framework_simplejwt.token_blacklist',
+    'rest_framework.authtoken',
 
 ]
 
@@ -162,8 +167,8 @@ CORS_ALLOW_HEADERS = [
 
 # Enable token blacklisting
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+    "ACCESS_TOKEN_LIFETIME": timedelta(days=14),
+    "REFRESH_TOKEN_LIFETIME": timedelta(weeks=4),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
     "ALGORITHM": "HS256",
