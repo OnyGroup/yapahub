@@ -29,7 +29,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 
-
 // Define TypeScript interfaces for the data
 interface Campaign {
   id: number;
@@ -56,7 +55,7 @@ interface DiscountCode {
 const MarketingDashboard = () => {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [performanceData, setPerformanceData] = useState<PerformanceData[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [selectedCampaignId, setSelectedCampaignId] = useState<number | null>(null);
   const [discountFormData, setDiscountFormData] = useState<DiscountCode>({
     code: "",
     discount_percentage: 0,
@@ -64,34 +63,48 @@ const MarketingDashboard = () => {
     valid_to: "",
     usage_limit: 0,
   });
+  const [loading, setLoading] = useState(true);
 
-  // Fetch campaigns and performance data
+  // Fetch campaigns
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchCampaigns = async () => {
       try {
-        // Fetch campaigns
-        const campaignsResponse = await axios.get("http://127.0.0.1:8000/marketing/campaigns/", {
+        const response = await axios.get("http://127.0.0.1:8000/marketing/campaigns/", {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
           },
         });
-        setCampaigns(campaignsResponse.data);
-
-        // Fetch performance data (example endpoint)
-        const performanceResponse = await axios.get("http://127.0.0.1:8000/marketing/campaigns/performance/", {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-          },
-        });
-        setPerformanceData(performanceResponse.data);
+        setCampaigns(response.data);
       } catch (error) {
-        console.error("Failed to fetch data", error);
+        console.error("Failed to fetch campaigns", error);
       } finally {
         setLoading(false);
       }
     };
-    fetchData();
+    fetchCampaigns();
   }, []);
+
+  // Fetch performance data for the selected campaign
+  useEffect(() => {
+    if (!selectedCampaignId) return;
+
+    const fetchPerformanceData = async () => {
+      try {
+        const response = await axios.get(
+          `http://127.0.0.1:8000/marketing/campaigns/${selectedCampaignId}/performance/`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+            },
+          }
+        );
+        setPerformanceData([response.data]); // Wrap in an array for Recharts compatibility
+      } catch (error) {
+        console.error("Failed to fetch performance data", error);
+      }
+    };
+    fetchPerformanceData();
+  }, [selectedCampaignId]);
 
   // Handle discount form changes
   const handleDiscountChange = (
@@ -210,7 +223,13 @@ const MarketingDashboard = () => {
         <h2 className="text-2xl font-semibold mb-4">Active Campaigns</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {campaigns.map((campaign) => (
-            <Card key={campaign.id}>
+            <Card
+              key={campaign.id}
+              onClick={() => setSelectedCampaignId(campaign.id)}
+              className={`cursor-pointer ${
+                selectedCampaignId === campaign.id ? "border-primary" : ""
+              }`}
+            >
               <CardHeader>
                 <CardTitle>{campaign.name}</CardTitle>
               </CardHeader>
@@ -224,26 +243,28 @@ const MarketingDashboard = () => {
       </div>
 
       {/* Campaign Performance Chart */}
-      <div className="mb-6">
-        <h2 className="text-2xl font-semibold mb-4">Campaign Performance</h2>
-        <Card>
-          <CardHeader>
-            <CardTitle>Campaign Performance</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={performanceData}>
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="opens" fill="#1e40af" name="Opens" />
-                <Bar dataKey="clicks" fill="#ef4444" name="Clicks" />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
+      {selectedCampaignId && (
+        <div className="mb-6">
+          <h2 className="text-2xl font-semibold mb-4">Campaign Performance</h2>
+          <Card>
+            <CardHeader>
+              <CardTitle>Campaign Performance</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={performanceData}>
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="opens" fill="#1e40af" name="Opens" />
+                  <Bar dataKey="clicks" fill="#ef4444" name="Clicks" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 };
