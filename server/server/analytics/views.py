@@ -158,3 +158,42 @@ class CustomerDashboard(APIView):
             "purchase_frequency": purchase_frequency,
             "activity_timeline": list(activity_timeline),
         }, status=200)
+    
+class SegmentUsersView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, segment_name):
+        # Calculate the start date for segmentation (last 30 days for activity-based segments)
+        start_date = now() - timedelta(days=30)
+
+        if segment_name == "high_spenders":
+            users = User.objects.annotate(
+                total_spent=Sum('sales__total_price')
+            ).filter(total_spent__gte=1000)
+        elif segment_name == "moderate_spenders":
+            users = User.objects.annotate(
+                total_spent=Sum('sales__total_price')
+            ).filter(total_spent__range=(500, 999))
+        elif segment_name == "low_spenders":
+            users = User.objects.annotate(
+                total_spent=Sum('sales__total_price')
+            ).filter(total_spent__lt=500)
+        elif segment_name == "active_users":
+            users = User.objects.filter(
+                sales__timestamp__gte=start_date
+            ).distinct()
+        elif segment_name == "inactive_users":
+            users = User.objects.exclude(
+                sales__timestamp__gte=start_date
+            ).distinct()
+        elif segment_name == "at_risk_users":
+            users = User.objects.filter(
+                sales__timestamp__gte=now() - timedelta(days=90),
+                sales__timestamp__lte=start_date
+            ).distinct()
+        else:
+            return Response({"error": "Invalid segment name"}, status=400)
+
+        # Return user IDs or email addresses
+        user_data = [{"id": user.id, "email": user.email} for user in users]
+        return Response(user_data, status=200)
