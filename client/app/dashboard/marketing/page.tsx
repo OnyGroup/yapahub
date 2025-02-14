@@ -200,7 +200,7 @@ const MarketingDashboard = () => {
           Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
         },
       });
-      alert("Campaign created successfully!");
+      alert("Campaign created successfully and emails sent!");
       setNewCampaignData({
         name: "",
         campaign_type: "email",
@@ -210,7 +210,7 @@ const MarketingDashboard = () => {
         audience: [],
       });
       setSelectedSegments([]);
-
+  
       // Refresh campaigns after creation
       const response = await axios.get("http://127.0.0.1:8000/marketing/campaigns/", {
         headers: {
