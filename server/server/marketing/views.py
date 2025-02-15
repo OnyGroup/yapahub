@@ -5,6 +5,13 @@ from rest_framework.permissions import IsAuthenticated
 from .models import Campaign, CampaignPerformance, DiscountCode
 from .serializers import CampaignSerializer, CampaignPerformanceSerializer, DiscountCodeSerializer
 from rest_framework import status
+from django.conf import settings
+from .utils.email_utils import send_email
+from datetime import timedelta
+from django.utils.timezone import now
+from django.db.models import Sum
+from django.contrib.auth.models import User
+from .tasks import send_campaign_emails
 
 class CampaignListView(APIView):
     permission_classes = [IsAuthenticated]
@@ -17,7 +24,57 @@ class CampaignListView(APIView):
     def post(self, request):
         serializer = CampaignSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            campaign = serializer.save()
+
+            # Fetch users based on selected segments
+            audience_emails = []
+            for segment_name in request.data.get("segments", []):
+                if segment_name == "high_spenders":
+                    users = User.objects.annotate(
+                        total_spent=Sum('sales__total_price')
+                    ).filter(total_spent__gte=1000)
+                elif segment_name == "moderate_spenders":
+                    users = User.objects.annotate(
+                        total_spent=Sum('sales__total_price')
+                    ).filter(total_spent__range=(500, 999))
+                elif segment_name == "low_spenders":
+                    users = User.objects.annotate(
+                        total_spent=Sum('sales__total_price')
+                    ).filter(total_spent__lt=500)
+                elif segment_name == "active_users":
+                    users = User.objects.filter(
+                        sales__timestamp__gte=now() - timedelta(days=30)
+                    ).distinct()
+                elif segment_name == "inactive_users":
+                    users = User.objects.exclude(
+                        sales__timestamp__gte=now() - timedelta(days=30)
+                    ).distinct()
+                elif segment_name == "at_risk_users":
+                    users = User.objects.filter(
+                        sales__timestamp__gte=now() - timedelta(days=90),
+                        sales__timestamp__lte=now() - timedelta(days=30)
+                    ).distinct()
+                else:
+                    return Response({"error": f"Invalid segment: {segment_name}"}, status=400)
+                audience_emails.extend([user.email for user in users])
+
+            # Check if there are any audience emails
+            if not audience_emails:
+                return Response({"error": "No audience found for the selected segments."}, status=400)
+
+            # Add the resolved users to the campaign's audience field
+            campaign.audience.set(User.objects.filter(email__in=audience_emails))
+
+            # Schedule the email-sending task using Celery
+            try:
+                if campaign.scheduled_at > now():
+                    delay = (campaign.scheduled_at - now()).total_seconds()
+                    send_campaign_emails.apply_async((campaign.id,), countdown=delay)
+                else:
+                    send_campaign_emails.delay(campaign.id)
+            except Exception as e:
+                return Response({"error": f"Failed to schedule emails: {str(e)}"}, status=500)
+
             return Response(serializer.data, status=201)
         return Response(serializer.errors, status=400)
 

@@ -62,6 +62,9 @@ local_settings.py
 db.sqlite3-journal
 /server/server/db.sqlite3
 
+# redis
+dump.rdb
+
 # Flask stuff:
 instance/
 .webassets-cache

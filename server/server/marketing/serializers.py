@@ -5,7 +5,12 @@ from .models import Campaign, CampaignPerformance, DiscountCode
 class CampaignSerializer(serializers.ModelSerializer):
     class Meta:
         model = Campaign
-        fields = ['id', 'name', 'campaign_type', 'audience', 'subject', 'content', 'scheduled_at', 'sent_at']
+        fields = ['id', 'name', 'campaign_type', 'audience', 'subject', 'content', 'scheduled_at', 'sent_at',]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Make the audience field optional
+        self.fields['audience'].required = False
 
 class CampaignPerformanceSerializer(serializers.ModelSerializer):
     class Meta:
