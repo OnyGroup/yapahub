@@ -33,6 +33,14 @@ class CampaignListView(APIView):
                     users = User.objects.annotate(
                         total_spent=Sum('sales__total_price')
                     ).filter(total_spent__gte=1000)
+                elif segment_name == "moderate_spenders":
+                    users = User.objects.annotate(
+                        total_spent=Sum('sales__total_price')
+                    ).filter(total_spent__range=(500, 999))
+                elif segment_name == "low_spenders":
+                    users = User.objects.annotate(
+                        total_spent=Sum('sales__total_price')
+                    ).filter(total_spent__lt=500)
                 elif segment_name == "active_users":
                     users = User.objects.filter(
                         sales__timestamp__gte=now() - timedelta(days=30)
@@ -46,21 +54,23 @@ class CampaignListView(APIView):
                         sales__timestamp__gte=now() - timedelta(days=90),
                         sales__timestamp__lte=now() - timedelta(days=30)
                     ).distinct()
-                # Add similar logic for other segments...
+                else:
+                    return Response({"error": f"Invalid segment: {segment_name}"}, status=400)
                 audience_emails.extend([user.email for user in users])
 
             # Check if there are any audience emails
             if not audience_emails:
                 return Response({"error": "No audience found for the selected segments."}, status=400)
 
+            # Add the resolved users to the campaign's audience field
+            campaign.audience.set(User.objects.filter(email__in=audience_emails))
+
             # Schedule the email-sending task using Celery
             try:
                 if campaign.scheduled_at > now():
-                    # Calculate the delay in seconds
                     delay = (campaign.scheduled_at - now()).total_seconds()
                     send_campaign_emails.apply_async((campaign.id,), countdown=delay)
                 else:
-                    # Send immediately if the scheduled time has passed
                     send_campaign_emails.delay(campaign.id)
             except Exception as e:
                 return Response({"error": f"Failed to schedule emails: {str(e)}"}, status=500)

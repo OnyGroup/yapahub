@@ -84,7 +84,6 @@ const MarketingDashboard = () => {
     subject: "",
     content: "",
     scheduled_at: "",
-    audience: [] as number[], // List of user IDs
   });
   const [customerSegments, setCustomerSegments] = useState<CustomerSegment[]>([]);
   const [selectedSegments, setSelectedSegments] = useState<string[]>([]);
@@ -158,7 +157,7 @@ const MarketingDashboard = () => {
 
   // Handle new campaign form changes
   const handleNewCampaignChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
     setNewCampaignData((prevData) => ({
@@ -192,37 +191,46 @@ const MarketingDashboard = () => {
   };
 
   // Handle new campaign form submission
-  const handleNewCampaignSubmit = async (e: React.FormEvent) => {
+  const handleNewCampaignSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post("http://127.0.0.1:8000/marketing/campaigns/", newCampaignData, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-        },
-      });
-      alert("Campaign created successfully and emails sent!");
-      setNewCampaignData({
-        name: "",
-        campaign_type: "email",
-        subject: "",
-        content: "",
-        scheduled_at: "",
-        audience: [],
-      });
-      setSelectedSegments([]);
-  
-      // Refresh campaigns after creation
-      const response = await axios.get("http://127.0.0.1:8000/marketing/campaigns/", {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-        },
-      });
-      setCampaigns(response.data);
+        const payload = {
+            name: newCampaignData.name,
+            campaign_type: newCampaignData.campaign_type,
+            segments: selectedSegments, // Include the selected segments
+            subject: newCampaignData.subject,
+            content: newCampaignData.content,
+            scheduled_at: newCampaignData.scheduled_at,
+        };
+
+        await axios.post("http://127.0.0.1:8000/marketing/campaigns/", payload, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+            },
+        });
+
+        alert("Campaign created successfully and emails sent!");
+        setNewCampaignData({
+            name: "",
+            campaign_type: "email",
+            subject: "",
+            content: "",
+            scheduled_at: "",
+        });
+        setSelectedSegments([]);
+
+        // Refresh campaigns after creation
+        const response = await axios.get("http://127.0.0.1:8000/marketing/campaigns/", {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+            },
+        });
+        setCampaigns(response.data);
     } catch (error) {
-      console.error("Failed to create campaign", error);
-      alert("Failed to create campaign. Please check the details.");
+        console.error("Failed to create campaign", error);
+        alert("Failed to create campaign. Please check the details.");
     }
-  };
+};
 
   // Handle discount form changes
   const handleDiscountChange = (
@@ -338,27 +346,26 @@ const MarketingDashboard = () => {
                 />
               </div>
               <div>
-                <Label>Audience</Label>
-                <div className="flex flex-col gap-2">
-                  {customerSegments.map((segment) => (
-                    <label key={segment.value} className="flex items-center gap-2">
-                      <Checkbox
-                        checked={selectedSegments.includes(segment.value)}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            handleSegmentSelection([...selectedSegments, segment.value]);
-                          } else {
-                            handleSegmentSelection(
-                              selectedSegments.filter((val) => val !== segment.value)
-                            );
-                          }
-                        }}
-                      />
-                      {segment.label} ({segment.count})
-                    </label>
-                  ))}
-                </div>
-              </div>
+                <Label>Audience Segments</Label>
+                {customerSegments.map((segment) => (
+                    <div key={segment.value} className="flex items-center space-x-2">
+                        <Checkbox
+                            id={segment.value}
+                            checked={selectedSegments.includes(segment.value)}
+                            onCheckedChange={(checked) => {
+                                if (checked) {
+                                    handleSegmentSelection([...selectedSegments, segment.value]);
+                                } else {
+                                    handleSegmentSelection(selectedSegments.filter((val) => val !== segment.value));
+                                }
+                            }}
+                        />
+                        <Label htmlFor={segment.value}>
+                            {segment.label} ({segment.count})
+                        </Label>
+                    </div>
+                ))}
+            </div>
             </div>
             <Button type="submit" className="mt-4">
               Create Campaign
