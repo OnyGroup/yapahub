@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from django.db.models import Q
 
 class Command(BaseCommand):
-    help = 'Replaces all @example.com and @yapa.hub emails in the database with real email addresses for testing.'
+    help = 'Appends unique identifiers to real email addresses in the database for testing.'
 
     def handle(self, *args, **kwargs):
         # List of real email addresses to use
@@ -16,13 +16,14 @@ class Command(BaseCommand):
 
         # Fetch all users with placeholder emails
         users_with_placeholder_emails = User.objects.filter(
-            Q(email__icontains='@example.com') | Q(email__icontains='@yapa.hub')
+            Q(email__icontains='@ony-group.com') | Q(email__icontains='@gmail.com')
         )
 
-        # Update each user's email
-        for user in users_with_placeholder_emails:
-            # Randomly select one of the real email addresses
-            new_email = random.choice(real_emails)
+        # Update each user's email with a unique real email
+        for i, user in enumerate(users_with_placeholder_emails):
+            base_email = random.choice(real_emails)
+            username, domain = base_email.split('@')
+            new_email = f"{username}+{i + 1}@{domain}"  # Add unique identifier
             user.email = new_email
             user.save()
 

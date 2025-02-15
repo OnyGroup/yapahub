@@ -31,16 +31,20 @@ class CampaignListView(APIView):
             for segment_name in request.data.get("segments", []):
                 if segment_name == "high_spenders":
                     users = User.objects.annotate(
-                        total_spent=Sum('sales__total_price')
-                    ).filter(total_spent__gte=1000)
+                        total_spent=Sum('sales__total_price', distinct=True)
+                    ).filter(total_spent__gte=1000, sales__isnull=False)
                 elif segment_name == "moderate_spenders":
                     users = User.objects.annotate(
-                        total_spent=Sum('sales__total_price')
-                    ).filter(total_spent__range=(500, 999))
+                        total_spent=Sum('sales__total_price', distinct=True)
+                    ).filter(total_spent__range=(500, 999), sales__isnull=False)
                 elif segment_name == "low_spenders":
                     users = User.objects.annotate(
-                        total_spent=Sum('sales__total_price')
-                    ).filter(total_spent__lt=500)
+                        total_spent=Sum('sales__total_price', distinct=True)
+                    ).filter(total_spent__lt=500, sales__isnull=False)
+
+                    print(f"Resolved {users.count()} users for segment 'low_spenders'")
+                    for user in users:
+                        print(user.id, user.total_spent)
                 elif segment_name == "active_users":
                     users = User.objects.filter(
                         sales__timestamp__gte=now() - timedelta(days=30)
@@ -56,16 +60,19 @@ class CampaignListView(APIView):
                     ).distinct()
                 else:
                     return Response({"error": f"Invalid segment: {segment_name}"}, status=400)
-                audience_emails.extend([user.email for user in users])
+
+                audience_emails.extend([user.email.lower() for user in users])
 
             # Check if there are any audience emails
             if not audience_emails:
                 return Response({"error": "No audience found for the selected segments."}, status=400)
 
             # Add the resolved users to the campaign's audience field
-            campaign.audience.set(User.objects.filter(email__in=audience_emails))
+            assigned_users = User.objects.filter(email__in=audience_emails).distinct()
+            print("Assigned users:", assigned_users.values_list('id', flat=True))
+            campaign.audience.set(assigned_users)
 
-            # Schedule the email-sending task using Celery
+            # Schedule email-sending task using Celery
             try:
                 if campaign.scheduled_at > now():
                     delay = (campaign.scheduled_at - now()).total_seconds()
