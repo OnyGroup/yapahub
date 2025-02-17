@@ -23,4 +23,5 @@ urlpatterns = [
     path('inbox/', include('inbox.urls')),
     path('analytics/', include('analytics.urls')),
     path('marketing/', include('marketing.urls')),
+    path("/ndonga/", include("ndonga.urls")),
 ]

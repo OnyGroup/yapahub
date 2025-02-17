@@ -4,3 +4,4 @@ djangorestframework_simplejwt==5.4.0
 sendgrid==6.11.0
 celery==5.4.0
 redis==5.2.1
+openai==1.63.0
