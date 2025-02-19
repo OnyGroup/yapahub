@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import axios from "axios";
 import {
   Table,
   TableBody,
@@ -14,7 +15,6 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -24,44 +24,84 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-// Mock data for inventory
-const mockInventory = [
-  {
-    id: 1,
-    name: "Smartphone X",
-    stock: 50,
-    price: 999.99,
-  },
-  {
-    id: 2,
-    name: "Laptop Pro",
-    stock: 20,
-    price: 1499.99,
-  },
-];
+interface InventoryItem {
+  id: number;
+  name: string;
+  stock: number;
+  price: number;
+}
 
 export default function InventoryDashboard() {
-  const [inventory, setInventory] = useState(mockInventory);
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [newProduct, setNewProduct] = useState({
     name: "",
     stock: 0,
     price: 0,
   });
+  const [loading, setLoading] = useState(true);
 
-  // Add a new product
-  const handleAddProduct = () => {
-    setInventory([...inventory, { ...newProduct, id: inventory.length + 1 }]);
-    setNewProduct({ name: "", stock: 0, price: 0 });
+  useEffect(() => {
+    const fetchInventory = async () => {
+      try {
+        const response = await axios.get("http://127.0.0.1:8000/store/products/", {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+          },
+        });
+        setInventory(response.data);
+      } catch (error) {
+        console.error("Failed to fetch inventory", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchInventory();
+  }, []);
+
+  const handleAddProduct = async () => {
+    try {
+      await axios.post(
+        "http://127.0.0.1:8000/store/products/",
+        newProduct,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+          },
+        }
+      );
+      const response = await axios.get("http://127.0.0.1:8000/store/products/", {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        },
+      });
+      setInventory(response.data);
+      setNewProduct({ name: "", stock: 0, price: 0 });
+    } catch (error) {
+      console.error("Failed to add product", error);
+    }
   };
 
-  // Update stock for a product
-  const handleUpdateStock = (id: number, newStock: number) => {
-    setInventory(
-      inventory.map((item) =>
-        item.id === id ? { ...item, stock: newStock } : item
-      )
-    );
+  const handleUpdateStock = async (id: number, newStock: number) => {
+    try {
+      await axios.patch(
+        `http://127.0.0.1:8000/store/products/${id}/`,
+        { stock: newStock },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+          },
+        }
+      );
+      setInventory((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, stock: newStock } : item))
+      );
+    } catch (error) {
+      console.error("Failed to update stock", error);
+    }
   };
+
+  if (loading) return <div>Loading...</div>;
 
   return (
     <div className="container mx-auto p-4">
@@ -75,7 +115,6 @@ export default function InventoryDashboard() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add New Product</DialogTitle>
-            <DialogDescription>Fill in the details to add a new product.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <Label>Name</Label>

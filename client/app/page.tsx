@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import axios from "axios";
 import {
   Card,
   CardHeader,
@@ -19,44 +20,52 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 
-// Mock data for products
-const mockProducts = [
-  {
-    id: 1,
-    name: "Smartphone X",
-    description: "A high-end smartphone with advanced features.",
-    price: 999.99,
-    stock: 50,
-    images: ["https://via.placeholder.com/150", "https://via.placeholder.com/150"],
-  },
-  {
-    id: 2,
-    name: "Laptop Pro",
-    description: "Powerful laptop for professionals.",
-    price: 1499.99,
-    stock: 20,
-    images: ["https://via.placeholder.com/150"],
-  },
-];
+interface Product {
+  id: number;
+  name: string;
+  description: string;
+  price: number;
+  stock: number;
+  images: string[];
+}
 
 export default function ProductsPage() {
+  const [products, setProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("price_asc");
   const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(true);
 
-  // Filter and sort products
-  const filteredProducts = mockProducts
-    .filter((product) =>
-      product.name.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-    .sort((a, b) => {
-      if (sortBy === "price_asc") return a.price - b.price;
-      if (sortBy === "price_desc") return b.price - a.price;
-      return 0;
-    });
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const response = await axios.get(
+          `http://127.0.0.1:8000/store/products/?page=${currentPage}&search=${searchTerm}&ordering=${sortBy}`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+            },
+          }
+        );
+        setProducts(response.data.results || []);
+      } catch (error) {
+        console.error("Failed to fetch products", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, [currentPage, searchTerm, sortBy]);
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+    setCurrentPage(1); // Reset pagination when searching
+  };
+
+  if (loading) return <div>Loading...</div>;
 
   return (
     <div className="container mx-auto p-4">
@@ -67,7 +76,7 @@ export default function ProductsPage() {
         <Input
           placeholder="Search products..."
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          onChange={handleSearchChange}
         />
         <Select value={sortBy} onValueChange={setSortBy}>
           <SelectTrigger className="w-[200px]">
@@ -83,7 +92,7 @@ export default function ProductsPage() {
       {/* Product List */}
       <ScrollArea className="h-[600px]">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredProducts.map((product) => (
+          {products.map((product) => (
             <Card key={product.id}>
               <CardHeader>
                 <img
