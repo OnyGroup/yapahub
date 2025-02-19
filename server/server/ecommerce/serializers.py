@@ -1,7 +1,9 @@
 from rest_framework import serializers
+from .utils.cloudinary_utils import upload_image_to_cloudinary
 from .models import (
     Category,
     Product,
+    ProductImage,
     InventoryHistory,
     Cart,
     CartItem,
@@ -15,7 +17,13 @@ class CategorySerializer(serializers.ModelSerializer):
         model = Category
         fields = ["id", "name", "description"]
 
+class ProductImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductImage
+        fields = ['id', 'image_url', 'created_at']
+
 class ProductSerializer(serializers.ModelSerializer):
+    images = ProductImageSerializer(many=True, read_only=True)  # Nested serializer for images
     category_name = serializers.CharField(source="category.name", read_only=True)
 
     class Meta:
@@ -33,7 +41,21 @@ class ProductSerializer(serializers.ModelSerializer):
             "category_name",
             "created_at",
             "updated_at",
+            "images",
         ]
+
+    def create(self, validated_data):
+        # Extract images from the request context
+        images = self.context.get('images', [])
+        product = Product.objects.create(**validated_data)
+
+        # Upload each image to Cloudinary and save the URLs
+        for image_file in images:
+            image_url = upload_image_to_cloudinary(image_file)
+            if image_url:
+                ProductImage.objects.create(product=product, image_url=image_url)
+
+        return product
 
 class InventoryHistorySerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source="product.name", read_only=True)
