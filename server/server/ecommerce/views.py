@@ -1,6 +1,8 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
+from rest_framework.parsers import MultiPartParser, FormParser
+from .utils.cloudinary_utils import upload_image_to_cloudinary
 from django.db.models import Sum
 from .models import (
     Category,
@@ -32,6 +34,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    parser_classes = [MultiPartParser, FormParser]  # Enable file uploads
 
     @action(detail=False, methods=["get"], url_path="low-stock")
     def low_stock_products(self, request):
@@ -39,6 +42,57 @@ class ProductViewSet(viewsets.ModelViewSet):
         low_stock_products = Product.objects.filter(stock__lte=10)
         serializer = self.get_serializer(low_stock_products, many=True)
         return Response(serializer.data)
+
+    def create(self, request, *args, **kwargs):
+        """
+        Handle product creation with image uploads.
+        Expects 'images' as a list of files in the request.
+        """
+        # Extract images from the request
+        images = request.FILES.getlist('images')  # Get list of uploaded images
+        serializer = self.get_serializer(data=request.data, context={'images': images})
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def update(self, request, *args, **kwargs):
+        """
+        Handle product updates with optional image uploads.
+        Expects 'images' as a list of files in the request.
+        """
+        instance = self.get_object()
+        images = request.FILES.getlist('images')  # Get list of uploaded images
+        serializer = self.get_serializer(instance, data=request.data, partial=True, context={'images': images})
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)
+
+    def perform_create(self, serializer):
+        """
+        Save the product and upload images to Cloudinary.
+        """
+        images = serializer.context.get('images', [])
+        product = serializer.save()
+
+        # Upload each image to Cloudinary and save the URLs
+        for image_file in images:
+            image_url = upload_image_to_cloudinary(image_file)
+            if image_url:
+                product.images.create(image_url=image_url)  # Create ProductImage objects
+
+    def perform_update(self, serializer):
+        """
+        Update the product and optionally add new images.
+        """
+        images = serializer.context.get('images', [])
+        product = serializer.save()
+
+        # Upload new images to Cloudinary and save the URLs
+        for image_file in images:
+            image_url = upload_image_to_cloudinary(image_file)
+            if image_url:
+                product.images.create(image_url=image_url)  # Create ProductImage objects
 
 class InventoryHistoryViewSet(viewsets.ModelViewSet):
     queryset = InventoryHistory.objects.all()
