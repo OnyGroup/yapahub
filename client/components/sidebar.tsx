@@ -2,7 +2,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { LayoutDashboard, MessagesSquare, Bot, Phone, Megaphone, Users, Cog, BarChart3, ChevronLeft, ChevronRight } from "lucide-react"
+import { LayoutDashboard, MessagesSquare, Bot, Phone, Megaphone, Users, Cog, BarChart3, ChevronLeft, ChevronRight, Package } from "lucide-react"
 
 const menuItems = [
   { icon: LayoutDashboard, text: "Dashboard", href: "/dashboard" },
@@ -13,6 +13,7 @@ const menuItems = [
   { icon: Phone, text: "Call Desk", href: "/dashboard/call-desk" },
   { icon: Megaphone, text: "Marketing", href: "/dashboard/marketing" },
   { icon: Cog, text: "Automation", href: "/dashboard/automation" },
+  { icon: Package, text: "Inventory", href: "/dashboard/inventory" },
 ]
 
 interface SidebarProps {
