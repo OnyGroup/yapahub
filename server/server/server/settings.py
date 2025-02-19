@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'inbox',
     'analytics',
     'marketing',
+    'ecommerce',
 
     # third party apps
     'rest_framework',
