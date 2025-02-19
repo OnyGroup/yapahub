@@ -28,6 +28,7 @@ DEBUG = True
 
 SENDGRID_API_KEY = config('SENDGRID_API_KEY')
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL')
+OPENAI_API_KEY = config("OPENAI_API_KEY")
 
 ALLOWED_HOSTS = []
 
@@ -48,6 +49,7 @@ INSTALLED_APPS = [
     'inbox',
     'analytics',
     'marketing',
+    'ecommerce',
 
     # third party apps
     'rest_framework',
