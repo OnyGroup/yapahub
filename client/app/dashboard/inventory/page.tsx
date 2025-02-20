@@ -26,7 +26,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 
-// Define types for Category and Product
 interface Category {
   id: number;
   name: string;
@@ -61,7 +60,7 @@ export default function InventoryDashboard() {
   });
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false); // State to control dialog visibility
-  const { toast } = useToast(); // Initialize the toast hook
+  const { toast } = useToast();
 
   // Fetch inventory and categories on component mount
   useEffect(() => {
@@ -92,6 +91,7 @@ export default function InventoryDashboard() {
     fetchData();
   }, []);
 
+  // Handle adding a new product
   const handleAddProduct = async () => {
     try {
       const formData = new FormData();
@@ -104,7 +104,7 @@ export default function InventoryDashboard() {
       formData.append("sku", newProduct.sku);
       formData.append("category", newProduct.category.toString());
       if (newProduct.image) {
-        formData.append("images", newProduct.image); // Append the image file
+        formData.append("images", newProduct.image); // Append image file
       }
 
       await axios.post("http://127.0.0.1:8000/store/products/", formData, {
@@ -152,6 +152,65 @@ export default function InventoryDashboard() {
     }
   };
 
+  // Handle deleting a product
+  const handleDeleteProduct = async (id: number) => {
+    try {
+      await axios.delete(`http://127.0.0.1:8000/store/products/${id}/`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        },
+      });
+
+      // Remove the deleted product from the inventory state
+      setInventory((prev) => prev.filter((item) => item.id !== id));
+
+      // Show success toast
+      toast({
+        title: "Success!",
+        description: "The product has been successfully deleted.",
+        variant: "default",
+      });
+    } catch (error) {
+      console.error("Failed to delete product", error);
+      toast({
+        title: "Error!",
+        description: "Failed to delete the product. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle editing a product
+  const handleEditProduct = async (id: number, updatedData: Partial<InventoryItem>) => {
+    try {
+      await axios.patch(`http://127.0.0.1:8000/store/products/${id}/`, updatedData, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        },
+      });
+
+      // Update the inventory state with the edited product
+      setInventory((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, ...updatedData } : item))
+      );
+
+      // Show success toast
+      toast({
+        title: "Success!",
+        description: "The product has been successfully updated.",
+        variant: "default",
+      });
+    } catch (error) {
+      console.error("Failed to edit product", error);
+      toast({
+        title: "Error!",
+        description: "Failed to update the product. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle updating stock (already implemented)
   const handleUpdateStock = async (id: number, newStock: number) => {
     try {
       await axios.patch(
@@ -190,30 +249,22 @@ export default function InventoryDashboard() {
             <Label>Name</Label>
             <Input
               value={newProduct.name}
-              onChange={(e) =>
-                setNewProduct({ ...newProduct, name: e.target.value })
-              }
+              onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
             />
             <Label>Description</Label>
             <Textarea
               value={newProduct.description}
-              onChange={(e) =>
-                setNewProduct({ ...newProduct, description: e.target.value })
-              }
+              onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
             />
             <Label>Size</Label>
             <Input
               value={newProduct.size}
-              onChange={(e) =>
-                setNewProduct({ ...newProduct, size: e.target.value })
-              }
+              onChange={(e) => setNewProduct({ ...newProduct, size: e.target.value })}
             />
             <Label>Color</Label>
             <Input
               value={newProduct.color}
-              onChange={(e) =>
-                setNewProduct({ ...newProduct, color: e.target.value })
-              }
+              onChange={(e) => setNewProduct({ ...newProduct, color: e.target.value })}
             />
             <Label>Price</Label>
             <Input
@@ -241,16 +292,12 @@ export default function InventoryDashboard() {
             <Label>SKU</Label>
             <Input
               value={newProduct.sku}
-              onChange={(e) =>
-                setNewProduct({ ...newProduct, sku: e.target.value })
-              }
+              onChange={(e) => setNewProduct({ ...newProduct, sku: e.target.value })}
             />
             <Label>Category</Label>
             <Select
               value={newProduct.category.toString()}
-              onValueChange={(value) =>
-                setNewProduct({ ...newProduct, category: parseInt(value) })
-              }
+              onValueChange={(value) => setNewProduct({ ...newProduct, category: parseInt(value) })}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select a category" />
@@ -298,14 +345,30 @@ export default function InventoryDashboard() {
                   <Input
                     type="number"
                     defaultValue={item.stock}
-                    onBlur={(e) =>
-                      handleUpdateStock(item.id, parseInt(e.target.value))
-                    }
+                    onBlur={(e) => handleUpdateStock(item.id, parseInt(e.target.value))}
                   />
                 </TableCell>
                 <TableCell>${item.price.toFixed(2)}</TableCell>
                 <TableCell>
-                  <Badge variant="destructive">Delete</Badge>
+                  <Badge
+                    variant="outline"
+                    className="mr-2 cursor-pointer"
+                    onClick={() =>
+                      handleEditProduct(item.id, {
+                        name: "Updated Name", // Example field to update
+                        price: item.price + 1, // Example: Increment price by 1
+                      })
+                    }
+                  >
+                    Edit
+                  </Badge>
+                  <Badge
+                    variant="destructive"
+                    className="cursor-pointer"
+                    onClick={() => handleDeleteProduct(item.id)}
+                  >
+                    Delete
+                  </Badge>
                 </TableCell>
               </TableRow>
             ))}
