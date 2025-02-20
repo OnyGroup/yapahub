@@ -24,6 +24,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
 
 // Define types for Category and Product
 interface Category {
@@ -59,6 +60,8 @@ export default function InventoryDashboard() {
     image: null as File | null, // For image upload
   });
   const [loading, setLoading] = useState(true);
+  const [isDialogOpen, setIsDialogOpen] = useState(false); // State to control dialog visibility
+  const { toast } = useToast(); // Initialize the toast hook
 
   // Fetch inventory and categories on component mount
   useEffect(() => {
@@ -101,7 +104,7 @@ export default function InventoryDashboard() {
       formData.append("sku", newProduct.sku);
       formData.append("category", newProduct.category.toString());
       if (newProduct.image) {
-        formData.append("image", newProduct.image); // Append the image file
+        formData.append("images", newProduct.image); // Append the image file
       }
 
       await axios.post("http://127.0.0.1:8000/store/products/", formData, {
@@ -118,6 +121,8 @@ export default function InventoryDashboard() {
         },
       });
       setInventory(response.data);
+
+      // Reset form and close dialog
       setNewProduct({
         name: "",
         description: "",
@@ -129,8 +134,21 @@ export default function InventoryDashboard() {
         category: 1,
         image: null,
       });
+      setIsDialogOpen(false); // Close the dialog
+
+      // Show success toast
+      toast({
+        title: "Success!",
+        description: "The product has been successfully added.",
+        variant: "default",
+      });
     } catch (error) {
       console.error("Failed to add product", error);
+      toast({
+        title: "Error!",
+        description: "Failed to add the product. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -160,7 +178,7 @@ export default function InventoryDashboard() {
       <h1 className="text-3xl font-bold mb-6">Inventory Management</h1>
 
       {/* Add New Product Dialog */}
-      <Dialog>
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogTrigger asChild>
           <Button className="mb-6">Add New Product</Button>
         </DialogTrigger>
@@ -176,7 +194,6 @@ export default function InventoryDashboard() {
                 setNewProduct({ ...newProduct, name: e.target.value })
               }
             />
-
             <Label>Description</Label>
             <Textarea
               value={newProduct.description}
@@ -184,7 +201,6 @@ export default function InventoryDashboard() {
                 setNewProduct({ ...newProduct, description: e.target.value })
               }
             />
-
             <Label>Size</Label>
             <Input
               value={newProduct.size}
@@ -192,7 +208,6 @@ export default function InventoryDashboard() {
                 setNewProduct({ ...newProduct, size: e.target.value })
               }
             />
-
             <Label>Color</Label>
             <Input
               value={newProduct.color}
@@ -200,7 +215,6 @@ export default function InventoryDashboard() {
                 setNewProduct({ ...newProduct, color: e.target.value })
               }
             />
-
             <Label>Price</Label>
             <Input
               type="number"
@@ -213,7 +227,6 @@ export default function InventoryDashboard() {
                 })
               }
             />
-
             <Label>Stock</Label>
             <Input
               type="number"
@@ -225,7 +238,6 @@ export default function InventoryDashboard() {
                 })
               }
             />
-
             <Label>SKU</Label>
             <Input
               value={newProduct.sku}
@@ -233,7 +245,6 @@ export default function InventoryDashboard() {
                 setNewProduct({ ...newProduct, sku: e.target.value })
               }
             />
-
             <Label>Category</Label>
             <Select
               value={newProduct.category.toString()}
@@ -252,7 +263,6 @@ export default function InventoryDashboard() {
                 ))}
               </SelectContent>
             </Select>
-
             <Label>Image</Label>
             <Input
               type="file"
@@ -264,7 +274,6 @@ export default function InventoryDashboard() {
                 }
               }}
             />
-
             <Button onClick={handleAddProduct}>Save</Button>
           </div>
         </DialogContent>
