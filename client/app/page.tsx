@@ -1,35 +1,12 @@
 "use client";
-
 import { useState, useEffect } from "react";
 import axios from "axios";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
-
-interface Product {
-  id: number;
-  name: string;
-  description: string;
-  price: number;
-  stock: number;
-  images: string[];
-}
+import ProductList from "./StoreProductList";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Product } from "@/types/types_inventory";
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -49,7 +26,8 @@ export default function ProductsPage() {
             },
           }
         );
-        setProducts(response.data.results || []);
+        console.log("Fetched Products:", response.data); // Log the raw response
+        setProducts(response.data); // Use response.data instead of response.data.results
       } catch (error) {
         console.error("Failed to fetch products", error);
       } finally {
@@ -91,27 +69,11 @@ export default function ProductsPage() {
 
       {/* Product List */}
       <ScrollArea className="h-[600px]">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {products.map((product) => (
-            <Card key={product.id}>
-              <CardHeader>
-                <img
-                  src={product.images[0]}
-                  alt={product.name}
-                  className="w-full h-48 object-cover rounded-md"
-                />
-              </CardHeader>
-              <CardContent>
-                <CardTitle>{product.name}</CardTitle>
-                <CardDescription>{product.description}</CardDescription>
-                <div className="mt-4 flex justify-between items-center">
-                  <Badge variant="secondary">${product.price.toFixed(2)}</Badge>
-                  <Button size="sm">Add to Cart</Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        {products.length > 0 ? (
+          <ProductList products={products} />
+        ) : (
+          <div>No products available.</div>
+        )}
       </ScrollArea>
 
       {/* Pagination */}
