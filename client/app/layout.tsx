@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import DictionaryProvider from "@/locales/DictionaryProvider"
 import { getDictionary } from "@/locales/dictionary"
 import { Toaster } from "@/components/ui/toaster"
+import { CartProvider } from "@/components/CartContext";
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -25,7 +26,9 @@ export default async function RootLayout({
       <body className={inter.className}>
         <DictionaryProvider dictionary={dictionary}>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          <CartProvider>
             {children}
+            </CartProvider>
             <Toaster />
           </ThemeProvider>
         </DictionaryProvider>
