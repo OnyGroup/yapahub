@@ -2,6 +2,9 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.filters import SearchFilter, OrderingFilter  # for search and ordering
+from django_filters.rest_framework import DjangoFilterBackend  # for advanced filtering
+from rest_framework.pagination import PageNumberPagination  # for pagination
 from .utils.cloudinary_utils import upload_image_to_cloudinary
 from django.db.models import Sum
 from .models import (
@@ -25,6 +28,12 @@ from .serializers import (
     ReviewSerializer,
 )
 
+# Custom Pagination Class 
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 10  # Number of items per page
+    page_size_query_param = 'page_size'  # Allow client to override page size
+    max_page_size = 100  # Maximum page size
+
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
@@ -35,6 +44,11 @@ class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = ProductSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     parser_classes = [MultiPartParser, FormParser]  # Enable file uploads
+    filter_backends = [SearchFilter, OrderingFilter, DjangoFilterBackend]  # Added filters
+    search_fields = ['name', 'description']  # Fields to search by
+    ordering_fields = ['price', 'stock', 'created_at']  # Fields to order by
+    ordering = ['id']  # Default ordering
+    pagination_class = StandardResultsSetPagination  # Added pagination
 
     @action(detail=False, methods=["get"], url_path="low-stock")
     def low_stock_products(self, request):
@@ -74,7 +88,6 @@ class ProductViewSet(viewsets.ModelViewSet):
         """
         images = serializer.context.get('images', [])
         product = serializer.save()
-
         # Upload each image to Cloudinary and save the URLs
         for image_file in images:
             image_url = upload_image_to_cloudinary(image_file)
@@ -87,7 +100,6 @@ class ProductViewSet(viewsets.ModelViewSet):
         """
         images = serializer.context.get('images', [])
         product = serializer.save()
-
         # Upload new images to Cloudinary and save the URLs
         for image_file in images:
             image_url = upload_image_to_cloudinary(image_file)
