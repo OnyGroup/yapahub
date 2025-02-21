@@ -21,28 +21,11 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-
-interface Category {
-  id: number;
-  name: string;
-}
-
-interface InventoryItem {
-  id: number;
-  name: string;
-  description: string;
-  size: string;
-  color: string;
-  price: number;
-  stock: number;
-  sku: string;
-  category: number; // Foreign key to Category
-  images: string[]; // URLs of images stored in Cloudinary
-}
+import { Category, InventoryItem } from "@/types/types_inventory";
+import InventoryActions from "./InventoryActions"; 
 
 export default function InventoryDashboard() {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
@@ -91,7 +74,6 @@ export default function InventoryDashboard() {
     fetchData();
   }, []);
 
-  // Handle adding a new product
   const handleAddProduct = async () => {
     try {
       const formData = new FormData();
@@ -134,7 +116,7 @@ export default function InventoryDashboard() {
         category: 1,
         image: null,
       });
-      setIsDialogOpen(false); // Close the dialog
+      setIsDialogOpen(false);
 
       // Show success toast
       toast({
@@ -152,65 +134,6 @@ export default function InventoryDashboard() {
     }
   };
 
-  // Handle deleting a product
-  const handleDeleteProduct = async (id: number) => {
-    try {
-      await axios.delete(`http://127.0.0.1:8000/store/products/${id}/`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-        },
-      });
-
-      // Remove the deleted product from the inventory state
-      setInventory((prev) => prev.filter((item) => item.id !== id));
-
-      // Show success toast
-      toast({
-        title: "Success!",
-        description: "The product has been successfully deleted.",
-        variant: "default",
-      });
-    } catch (error) {
-      console.error("Failed to delete product", error);
-      toast({
-        title: "Error!",
-        description: "Failed to delete the product. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Handle editing a product
-  const handleEditProduct = async (id: number, updatedData: Partial<InventoryItem>) => {
-    try {
-      await axios.patch(`http://127.0.0.1:8000/store/products/${id}/`, updatedData, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-        },
-      });
-
-      // Update the inventory state with the edited product
-      setInventory((prev) =>
-        prev.map((item) => (item.id === id ? { ...item, ...updatedData } : item))
-      );
-
-      // Show success toast
-      toast({
-        title: "Success!",
-        description: "The product has been successfully updated.",
-        variant: "default",
-      });
-    } catch (error) {
-      console.error("Failed to edit product", error);
-      toast({
-        title: "Error!",
-        description: "Failed to update the product. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Handle updating stock (already implemented)
   const handleUpdateStock = async (id: number, newStock: number) => {
     try {
       await axios.patch(
@@ -228,6 +151,16 @@ export default function InventoryDashboard() {
     } catch (error) {
       console.error("Failed to update stock", error);
     }
+  };
+
+  const handleUpdateProduct = (id: number, updatedData: Partial<InventoryItem>) => {
+    setInventory((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, ...updatedData } : item))
+    );
+  };
+
+  const handleDeleteProduct = (id: number) => {
+    setInventory((prev) => prev.filter((item) => item.id !== id));
   };
 
   if (loading) return <div>Loading...</div>;
@@ -350,25 +283,13 @@ export default function InventoryDashboard() {
                 </TableCell>
                 <TableCell>${item.price.toFixed(2)}</TableCell>
                 <TableCell>
-                  <Badge
-                    variant="outline"
-                    className="mr-2 cursor-pointer"
-                    onClick={() =>
-                      handleEditProduct(item.id, {
-                        name: "Updated Name", // Example field to update
-                        price: item.price + 1, // Example: Increment price by 1
-                      })
-                    }
-                  >
-                    Edit
-                  </Badge>
-                  <Badge
-                    variant="destructive"
-                    className="cursor-pointer"
-                    onClick={() => handleDeleteProduct(item.id)}
-                  >
-                    Delete
-                  </Badge>
+                  {/* Pass the item, categories, and callbacks to the InventoryActions component */}
+                  <InventoryActions
+                    item={item}
+                    categories={categories}
+                    onUpdate={handleUpdateProduct}
+                    onDelete={handleDeleteProduct}
+                  />
                 </TableCell>
               </TableRow>
             ))}
