@@ -25,6 +25,7 @@ class ProductImageSerializer(serializers.ModelSerializer):
 class ProductSerializer(serializers.ModelSerializer):
     images = ProductImageSerializer(many=True, read_only=True)  # Nested serializer for images
     category_name = serializers.CharField(source="category.name", read_only=True)
+    price = serializers.DecimalField(max_digits=10, decimal_places=2, coerce_to_string=False) # Ensures price is a number
 
     class Meta:
         model = Product
