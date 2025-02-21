@@ -11,21 +11,24 @@ import { Product } from "@/types/types_inventory";
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortBy, setSortBy] = useState("price_asc");
+  const [sortBy, setSortBy] = useState("price"); // Default to ascending price
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const response = await axios.get(
-          `http://127.0.0.1:8000/store/products/?page=${currentPage}&search=${searchTerm}&ordering=${sortBy}`,
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-            },
-          }
-        );
+        let url = `http://127.0.0.1:8000/store/products/?page=${currentPage}&ordering=${sortBy}`;
+        if (searchTerm) {
+          url += `&search=${searchTerm}`;
+        }
+
+        console.log("API Request URL:", url); // Log the API request URL
+        const response = await axios.get(url, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+          },
+        });
         console.log("Fetched Products:", response.data); // Log the raw response
         setProducts(response.data); // Use response.data instead of response.data.results
       } catch (error) {
@@ -61,8 +64,8 @@ export default function ProductsPage() {
             <SelectValue placeholder="Sort by" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="price_asc">Price: Low to High</SelectItem>
-            <SelectItem value="price_desc">Price: High to Low</SelectItem>
+            <SelectItem value="price">Price: Low to High</SelectItem>
+            <SelectItem value="-price">Price: High to Low</SelectItem>
           </SelectContent>
         </Select>
       </div>
