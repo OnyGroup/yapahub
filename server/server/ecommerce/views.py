@@ -120,6 +120,43 @@ class CartViewSet(viewsets.ModelViewSet):
         """Ensure users can only access their own cart."""
         return Cart.objects.filter(user=self.request.user)
 
+    @action(detail=False, methods=["post"], url_path="add")
+    def add_to_cart(self, request):
+        """
+        Add a product to the cart.
+        Expected payload:
+        {
+            "product_id": <int>,
+            "quantity": <int> (optional, default=1)
+        }
+        """
+        user = request.user
+        product_id = request.data.get("product_id")
+        quantity = request.data.get("quantity", 1)  # Default to 1 if not provided
+
+        if not product_id:
+            return Response({"error": "Product ID is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            product = Product.objects.get(id=product_id)
+        except Product.DoesNotExist:
+            return Response({"error": "Product not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Get or create the user's cart
+        cart, created = Cart.objects.get_or_create(user=user)
+
+        # Check if the product is already in the cart
+        cart_item, item_created = CartItem.objects.get_or_create(cart=cart, product=product)
+        if not item_created:
+            cart_item.quantity += quantity
+        else:
+            cart_item.quantity = quantity
+        cart_item.save()
+
+        # Serialize and return the updated cart
+        serializer = CartSerializer(cart)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
     @action(detail=True, methods=["get"], url_path="total-price")
     def total_price(self, request, pk=None):
         """Calculate and return the total price of the cart."""
