@@ -21,11 +21,12 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Category, InventoryItem } from "@/types/types_inventory";
-import InventoryActions from "./InventoryActions"; 
+import InventoryActions from "./InventoryActions";
 
 export default function InventoryDashboard() {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
@@ -43,6 +44,8 @@ export default function InventoryDashboard() {
   });
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false); // State to control dialog visibility
+  const [visibleImages, setVisibleImages] = useState<number[]>([]); // Track visible images by product ID
+  const [isEditing, setIsEditing] = useState(false); // Track edit mode
   const { toast } = useToast();
 
   // Fetch inventory and categories on component mount
@@ -163,6 +166,19 @@ export default function InventoryDashboard() {
     setInventory((prev) => prev.filter((item) => item.id !== id));
   };
 
+  const getCategoryName = (categoryId: number): string => {
+    const category = categories.find((cat) => cat.id === categoryId);
+    return category ? category.name : "Unknown";
+  };
+
+  const toggleImageVisibility = (id: number) => {
+    if (visibleImages.includes(id)) {
+      setVisibleImages((prev) => prev.filter((itemId) => itemId !== id));
+    } else {
+      setVisibleImages((prev) => [...prev, id]);
+    }
+  };
+
   if (loading) return <div>Loading...</div>;
 
   return (
@@ -265,8 +281,11 @@ export default function InventoryDashboard() {
           <TableHeader>
             <TableRow>
               <TableHead>Product Name</TableHead>
+              <TableHead>SKU</TableHead>
+              <TableHead>Category</TableHead>
               <TableHead>Stock</TableHead>
               <TableHead>Price</TableHead>
+              <TableHead>Image</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -274,16 +293,42 @@ export default function InventoryDashboard() {
             {inventory.map((item) => (
               <TableRow key={item.id}>
                 <TableCell>{item.name}</TableCell>
+                <TableCell>{item.sku}</TableCell>
+                <TableCell>{getCategoryName(item.category)}</TableCell>
                 <TableCell>
-                  <Input
-                    type="number"
-                    defaultValue={item.stock}
-                    onBlur={(e) => handleUpdateStock(item.id, parseInt(e.target.value))}
-                  />
+                  {isEditing ? (
+                    <Input
+                      type="number"
+                      defaultValue={item.stock}
+                      onBlur={(e) => handleUpdateStock(item.id, parseInt(e.target.value))}
+                    />
+                  ) : (
+                    <span>{item.stock}</span>
+                  )}
                 </TableCell>
                 <TableCell>${item.price.toFixed(2)}</TableCell>
                 <TableCell>
-                  {/* Pass the item, categories, and callbacks to the InventoryActions component */}
+                {visibleImages.includes(item.id) && item.images.length > 0 ? (
+                  <img
+                    src={item.images[0]} // Ensure the URL is valid
+                    alt={item.name}
+                    className="w-16 h-16 object-cover rounded-md"
+                    onError={(e) => {
+                      console.error("Failed to load image:", item.images[0]);
+                      e.currentTarget.src = "/placeholder-image.png"; // Fallback image
+                    }}
+                  />
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => toggleImageVisibility(item.id)}
+                  >
+                    {visibleImages.includes(item.id) ? "Hide Image" : "Show Image"}
+                  </Button>
+                )}
+                </TableCell>
+                <TableCell>
                   <InventoryActions
                     item={item}
                     categories={categories}

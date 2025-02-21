@@ -135,9 +135,13 @@ export default function InventoryActions({ item, categories, onUpdate, onDelete 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogTrigger asChild>
-          <Badge variant="outline" className="mr-2 cursor-pointer">
-            Edit
-          </Badge>
+        <Badge
+          variant="outline"
+          className="mr-2 cursor-pointer"
+          onClick={() => setIsEditDialogOpen(true)} // Open the edit dialog
+        >
+          Edit
+        </Badge>
         </DialogTrigger>
         <DialogContent>
           <DialogHeader>
