@@ -312,6 +312,7 @@ export default function InventoryDashboard() {
                   <div className="flex gap-2">
                     {item.images.map((image, index) => (
                       <img
+                      loading="lazy"
                         key={index}
                         src={image.image_url}
                         alt={`${item.name} - Image ${index + 1}`}
