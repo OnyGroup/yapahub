@@ -309,15 +309,20 @@ export default function InventoryDashboard() {
                 <TableCell>${item.price.toFixed(2)}</TableCell>
                 <TableCell>
                 {visibleImages.includes(item.id) && item.images.length > 0 ? (
-                  <img
-                    src={item.images[0]} // Ensure the URL is valid
-                    alt={item.name}
-                    className="w-16 h-16 object-cover rounded-md"
-                    onError={(e) => {
-                      console.error("Failed to load image:", item.images[0]);
-                      e.currentTarget.src = "/placeholder-image.png"; // Fallback image
-                    }}
-                  />
+                  <div className="flex gap-2">
+                    {item.images.map((image, index) => (
+                      <img
+                        key={index}
+                        src={image.image_url}
+                        alt={`${item.name} - Image ${index + 1}`}
+                        className="w-16 h-16 object-cover rounded-md"
+                        onError={(e) => {
+                          console.error("Failed to load image:", image.image_url);
+                          e.currentTarget.src = "/placeholder-image.png";
+                        }}
+                      />
+                    ))}
+                  </div>
                 ) : (
                   <Button
                     variant="outline"

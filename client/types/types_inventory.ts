@@ -13,5 +13,5 @@ export interface Category {
     stock: number;
     sku: string;
     category: number; // Foreign key to Category
-    images: string[]; // URLs of images stored in Cloudinary
+    images: { image_url: string }[]; // Images are objects with an image_url property
   }
