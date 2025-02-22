@@ -58,7 +58,7 @@ export default function InventoryDashboard() {
             Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
           },
         });
-        setInventory(inventoryResponse.data);
+        setInventory(inventoryResponse.data.results);
 
         // Fetch categories
         const categoriesResponse = await axios.get("http://127.0.0.1:8000/store/categories/", {
@@ -105,7 +105,7 @@ export default function InventoryDashboard() {
           Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
         },
       });
-      setInventory(response.data);
+      setInventory(response.data.results);
 
       // Reset form and close dialog
       setNewProduct({
