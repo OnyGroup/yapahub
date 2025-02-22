@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import { useCart } from "@/components/CartContext";
 import Header from "@/components/header_ecommerce";
+import { useToast } from "@/hooks/use-toast";
+import { Toaster } from "@/components/ui/toaster";
 
 interface CartItem {
   id: number;
@@ -24,6 +26,7 @@ export default function CartPage() {
   const [loading, setLoading] = useState(true);
   const { updateCartCount } = useCart();
   const [searchTerm, setSearchTerm] = useState("");
+  const { toast } = useToast();
 
   const fetchCartItems = async () => {
     try {
@@ -33,7 +36,6 @@ export default function CartPage() {
         },
       });
       setCartItems(response.data);
-      // Update total cart count
       const totalItems = response.data.reduce(
         (sum: number, item: CartItem) => sum + item.quantity,
         0
@@ -41,6 +43,11 @@ export default function CartPage() {
       updateCartCount(totalItems);
     } catch (error) {
       console.error("Failed to fetch cart items", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to load cart items. Please try again.",
+      });
     } finally {
       setLoading(false);
     }
@@ -63,22 +70,40 @@ export default function CartPage() {
           },
         }
       );
-      fetchCartItems(); // Refresh cart items
+      await fetchCartItems();
+      toast({
+        title: "Success",
+        description: "Cart updated successfully",
+      });
     } catch (error) {
       console.error("Failed to update item quantity", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update quantity. Please try again.",
+      });
     }
   };
 
-  const removeItem = async (itemId: number) => {
+  const removeItem = async (itemId: number, productName: string) => {
     try {
       await axios.delete(`http://127.0.0.1:8000/store/cart-items/${itemId}/`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
         },
       });
-      fetchCartItems(); // Refresh cart items
+      await fetchCartItems();
+      toast({
+        title: "Item Removed",
+        description: `${productName} has been removed from your cart.`,
+      });
     } catch (error) {
       console.error("Failed to remove item", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to remove item. Please try again.",
+      });
     }
   };
 
@@ -148,7 +173,7 @@ export default function CartPage() {
                       <Button
                         variant="destructive"
                         size="icon"
-                        onClick={() => removeItem(item.id)}
+                        onClick={() => removeItem(item.id, item.product_name)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -175,6 +200,7 @@ export default function CartPage() {
           </div>
         )}
       </div>
+      <Toaster />
     </div>
   );
 }
