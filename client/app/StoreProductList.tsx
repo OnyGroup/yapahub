@@ -13,7 +13,7 @@ export default function ProductList({ products }: ProductListProps) {
 
   const handleAddToCart = async (productId: number) => {
     try {
-      // Send the product ID to the backend
+      // First add the item to cart
       const response = await axios.post(
         "http://127.0.0.1:8000/store/carts/add/",
         { product_id: productId },
@@ -24,14 +24,21 @@ export default function ProductList({ products }: ProductListProps) {
         }
       );
   
-      // Refresh the cart count
-      const cartResponse = await axios.get("http://127.0.0.1:8000/store/carts/", {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-        },
-      });
+      // Get the cart ID from the response
+      const cartId = response.data.id;
   
-      updateCartCount(cartResponse.data.total_items);
+      // Get the total items using the correct endpoint
+      const cartItemsResponse = await axios.get(
+        `http://127.0.0.1:8000/store/carts/${cartId}/total-items/`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+          },
+        }
+      );
+  
+      // Update the cart count with the total_items value
+      updateCartCount(cartItemsResponse.data.total_items);
     } catch (error) {
       console.error("Failed to add item to cart", error);
     }
