@@ -164,6 +164,15 @@ class CartViewSet(viewsets.ModelViewSet):
         total = cart.total_price()
         return Response({"total_price": total})
 
+    @action(detail=True, methods=["get"], url_path="total-items")
+    def total_items(self, request, pk=None):
+        """
+        Calculate and return the total number of items in the cart.
+        """
+        cart = self.get_object()
+        total_items = sum(item.quantity for item in cart.items.all())
+        return Response({"total_items": total_items})
+
 class CartItemViewSet(viewsets.ModelViewSet):
     queryset = CartItem.objects.all()
     serializer_class = CartItemSerializer
