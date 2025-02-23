@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
@@ -18,8 +18,18 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { useForm, FormProvider } from "react-hook-form";
+import * as z from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+const formSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+  address: z.string().min(1, "Please enter your shipping address"),
+});
 
 export default function CheckoutPage() {
+  const methods = useForm();
+
   const [loading, setLoading] = useState(false);
   const [cartItems, setCartItems] = useState([]);
   const [orderSummary, setOrderSummary] = useState({
@@ -30,8 +40,16 @@ export default function CheckoutPage() {
   const { toast } = useToast();
   const router = useRouter();
 
+  const form = useForm({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      email: "",
+      address: "",
+    },
+  });
+
   // Fetch cart items on component mount
-  useState(() => {
+  useEffect(() => {
     const fetchCartItems = async () => {
       try {
         const response = await axios.get("http://127.0.0.1:8000/store/cart-items/", {
@@ -55,20 +73,18 @@ export default function CheckoutPage() {
         router.push("/cart");
       }
     };
+
     fetchCartItems();
-  }, []);
+  }, [router, toast]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const onSubmit = async (values) => {
     setLoading(true);
-
     try {
-      // Initialize payment
       const response = await axios.post(
         "http://127.0.0.1:8000/payments/initialize/",
         {
-          email: e.target.email.value,
-          shipping_address: e.target.address.value,
+          email: values.email,
+          shipping_address: values.address,
         },
         {
           headers: {
@@ -77,7 +93,6 @@ export default function CheckoutPage() {
         }
       );
 
-      // Redirect to Paystack checkout
       if (response.data.authorization_url) {
         window.location.href = response.data.authorization_url;
       }
@@ -105,45 +120,52 @@ export default function CheckoutPage() {
                 <CardTitle>Shipping Information</CardTitle>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input
-                        required
-                        type="email"
-                        name="email"
-                        placeholder="Enter your email"
-                      />
-                    </FormControl>
-                  </FormItem>
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Email</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter your email" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                  <FormItem>
-                    <FormLabel>Shipping Address</FormLabel>
-                    <FormControl>
-                      <Input
-                        required
-                        name="address"
-                        placeholder="Enter your shipping address"
-                      />
-                    </FormControl>
-                  </FormItem>
+                    <FormField
+                      control={form.control}
+                      name="address"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Shipping Address</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter your shipping address" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                  <Button 
-                    type="submit" 
-                    className="w-full"
-                    disabled={loading}
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Processing
-                      </>
-                    ) : (
-                      `Pay $${orderSummary.total.toFixed(2)}`
-                    )}
-                  </Button>
-                </form>
+                    <Button 
+                      type="submit" 
+                      className="w-full"
+                      disabled={loading}
+                    >
+                      {loading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Processing
+                        </>
+                      ) : (
+                        `Pay $${orderSummary.total.toFixed(2)}`
+                      )}
+                    </Button>
+                  </form>
+                </Form>
               </CardContent>
             </Card>
           </div>
@@ -190,8 +212,8 @@ export default function CheckoutPage() {
               <CardContent className="pt-6">
                 <div className="text-sm text-gray-500 space-y-2">
                   <p>• Secure payment processed by Paystack</p>
-                  <p>• Free shipping on all orders</p>
-                  <p>• 30-day return policy</p>
+                  <p>• Free shipping on orders above KES 5000</p>
+                  <p>• 7-day return policy</p>
                 </div>
               </CardContent>
             </Card>
