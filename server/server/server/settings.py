@@ -32,8 +32,17 @@ DEBUG = True
 SENDGRID_API_KEY = config('SENDGRID_API_KEY')
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL')
 OPENAI_API_KEY = config("OPENAI_API_KEY")
+PAYSTACK_SECRET_KEY = config("PAYSTACK_SECRET_KEY")
+PAYMENT_CALLBACK_URL = config("PAYMENT_CALLBACK_URL")
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    "127.0.0.1",
+    "localhost",
+    "9e74-41-90-186-216.ngrok-free.app"  # Ngrok URL
+]
+
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 
 # login url
 LOGIN_URL = '/auth/login/'
@@ -60,6 +69,8 @@ INSTALLED_APPS = [
     'analytics',
     'marketing',
     'ecommerce',
+    'payments',
+    'django_extensions',
 
     # third party apps
     'rest_framework',

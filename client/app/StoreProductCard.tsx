@@ -1,6 +1,5 @@
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 
 import { Product } from "@/types/types_inventory";
 
@@ -27,7 +26,6 @@ export default function ProductCard({ product }: ProductCardProps) {
         <CardDescription>{product.description}</CardDescription>
         <div className="mt-4 flex justify-between items-center">
           <Badge variant="secondary">${product.price.toFixed(2)}</Badge>
-          <Button size="sm">Add to Cart</Button>
         </div>
       </CardContent>
     </Card>

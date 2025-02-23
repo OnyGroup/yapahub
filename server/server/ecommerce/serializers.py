@@ -75,13 +75,18 @@ class InventoryHistorySerializer(serializers.ModelSerializer):
 
 class CartSerializer(serializers.ModelSerializer):
     total_price = serializers.SerializerMethodField()
+    total_items = serializers.SerializerMethodField()
 
     class Meta:
         model = Cart
-        fields = ["id", "user", "total_price"]
+        fields = ["id", "user", "total_price", "total_items"]
 
     def get_total_price(self, obj):
         return obj.total_price()
+    
+    def get_total_items(self, obj):
+        # Sum up the quantities of all cart items
+        return sum(item.quantity for item in obj.items.all())
 
 class CartItemSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source="product.name", read_only=True)

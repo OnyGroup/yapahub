@@ -25,6 +25,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { MenuIcon, SearchIcon, ShoppingCartIcon, LogOutIcon, UserIcon } from "lucide-react";
 import Link from "next/link";
+import { useCart } from "./CartContext";
 
 // Define types for navigation links
 interface NavItem {
@@ -40,7 +41,7 @@ interface HeaderProps {
 }
 
 export default function Header({ onSearch }: HeaderProps) {
-  const [cartCount, setCartCount] = useState(3); // Example cart count
+  const { cartCount } = useCart();
   const [isAuthenticated, setIsAuthenticated] = useState(true); // Simulate authentication
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -94,12 +95,14 @@ export default function Header({ onSearch }: HeaderProps) {
         {/* Actions (Cart, User) */}
         <div className="flex items-center space-x-4">
           {/* Cart */}
+          <Link href="/cart">
           <Button variant="ghost" size="icon" className="relative">
             <ShoppingCartIcon className="h-5 w-5" />
             <Badge className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center">
               {cartCount}
             </Badge>
           </Button>
+          </Link>
 
           {/* User Dropdown */}
           <DropdownMenu>
