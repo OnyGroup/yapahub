@@ -9,6 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Product } from "@/types/types_inventory";
 import Header from "@/components/header_ecommerce";
 import { Skeleton } from "@/components/ui/skeleton";
+import FooterEcommerce from "@/components/footer_ecommerce";
 
 export default function ProductsPage() {
   const router = useRouter();
@@ -51,12 +52,11 @@ export default function ProductsPage() {
   };
 
   return (
-    <div>
+    <div className="flex flex-col min-h-screen">
       {/* Include the Header component */}
       <Header onSearch={setSearchTerm} />
-
-      <div className="container mx-auto p-4">
-
+  
+      <div className="container mx-auto p-4 flex-grow">
         {/* Filters */}
         <div className="flex flex-col md:flex-row gap-4 mb-6">
           <Select value={sortBy} onValueChange={setSortBy}>
@@ -69,7 +69,7 @@ export default function ProductsPage() {
             </SelectContent>
           </Select>
         </div>
-
+  
         {/* Product List */}
         <ScrollArea className="h-[600px]">
           {loading ? (
@@ -86,7 +86,7 @@ export default function ProductsPage() {
             products.length > 0 ? <ProductList products={products} /> : <div>No products available.</div>
           )}
         </ScrollArea>
-
+  
         {/* Pagination */}
         <Pagination className="mt-6">
           <PaginationContent>
@@ -114,6 +114,9 @@ export default function ProductsPage() {
           </PaginationContent>
         </Pagination>
       </div>
+  
+      {/* Footer */}
+      <FooterEcommerce />
     </div>
   );
 }
