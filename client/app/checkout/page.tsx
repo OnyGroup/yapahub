@@ -21,6 +21,7 @@ import { Loader2 } from "lucide-react";
 import { useForm, FormProvider } from "react-hook-form";
 import * as z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { CartItem } from "@/types/types_inventory";
 
 const formSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -31,7 +32,7 @@ export default function CheckoutPage() {
   const methods = useForm();
 
   const [loading, setLoading] = useState(false);
-  const [cartItems, setCartItems] = useState([]);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [orderSummary, setOrderSummary] = useState({
     subtotal: 0,
     tax: 0,
@@ -58,7 +59,10 @@ export default function CheckoutPage() {
           },
         });
         setCartItems(response.data);
-        const subtotal = response.data.reduce((sum, item) => sum + item.total_price, 0);
+        const subtotal = response.data.reduce(
+          (sum: number, item: CartItem) => sum + item.total_price,
+          0
+        );        
         setOrderSummary({
           subtotal,
           tax: subtotal * 0.16, // 16% tax
@@ -77,7 +81,7 @@ export default function CheckoutPage() {
     fetchCartItems();
   }, [router, toast]);
 
-  const onSubmit = async (values) => {
+  const onSubmit = async (values: { email: string; address: string }) => {
     setLoading(true);
     try {
       const response = await axios.post(

@@ -31,3 +31,11 @@ export interface Category {
     updated_at: string;
     images: { image_url: string }[];
   }
+
+  export interface CartItem {
+    id: number;
+    product_name: string;
+    quantity: number;
+    total_price: number;
+  }
+  
