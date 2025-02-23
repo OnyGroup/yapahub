@@ -7,6 +7,7 @@ import ProductList from "./StoreProductList";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Product } from "@/types/types_inventory";
 import Header from "@/components/header_ecommerce";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -40,8 +41,6 @@ export default function ProductsPage() {
     fetchProducts();
   }, [currentPage, searchTerm, sortBy]);
 
-  if (loading) return <div>Loading...</div>;
-
   return (
     <div>
       {/* Include the Header component */}
@@ -64,10 +63,18 @@ export default function ProductsPage() {
 
         {/* Product List */}
         <ScrollArea className="h-[600px]">
-          {products.length > 0 ? (
-            <ProductList products={products} />
+          {loading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <div key={index} className="p-4 border rounded-lg">
+                  <Skeleton className="w-full h-40 mb-4" />
+                  <Skeleton className="h-6 w-3/4 mb-2" />
+                  <Skeleton className="h-6 w-1/2" />
+                </div>
+              ))}
+            </div>
           ) : (
-            <div>No products available.</div>
+            products.length > 0 ? <ProductList products={products} /> : <div>No products available.</div>
           )}
         </ScrollArea>
 
