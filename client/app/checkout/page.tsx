@@ -6,7 +6,6 @@ import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Form,
   FormControl,
@@ -65,8 +64,8 @@ export default function CheckoutPage() {
         );        
         setOrderSummary({
           subtotal,
-          tax: subtotal * 0.16, // 16% tax
-          total: subtotal * 1.16,
+          tax: 0, // Remove tax
+          total: subtotal, // No taxes for now
         });
       } catch (error) {
         toast({
@@ -197,10 +196,6 @@ export default function CheckoutPage() {
                     <div className="flex justify-between">
                       <span>Subtotal</span>
                       <span>${orderSummary.subtotal.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Tax (16%)</span>
-                      <span>${orderSummary.tax.toFixed(2)}</span>
                     </div>
                     <Separator className="my-2" />
                     <div className="flex justify-between font-bold">
