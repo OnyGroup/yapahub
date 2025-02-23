@@ -9,6 +9,7 @@ import { useCart } from "@/components/CartContext";
 import Header from "@/components/header_ecommerce";
 import { useToast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
+import { useRouter } from "next/navigation";
 
 interface CartItem {
   id: number;
@@ -27,6 +28,7 @@ export default function CartPage() {
   const { updateCartCount } = useCart();
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
+  const router = useRouter();
 
   const fetchCartItems = async () => {
     try {
@@ -188,7 +190,12 @@ export default function CartPage() {
                 <span className="text-xl font-semibold">Total</span>
                 <span className="text-xl">${calculateTotal().toFixed(2)}</span>
               </div>
-              <Button className="w-full">Proceed to Checkout</Button>
+              <Button 
+                className="w-full" 
+                onClick={() => router.push('/checkout')}
+              >
+                Proceed to Checkout
+              </Button>
             </div>
           </div>
         ) : (
