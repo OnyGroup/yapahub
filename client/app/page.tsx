@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import axios from "axios";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
@@ -10,10 +11,13 @@ import Header from "@/components/header_ecommerce";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ProductsPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const currentPage = Number(searchParams.get("page")) || 1;
   const [products, setProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("price"); // Default to ascending price
-  const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -40,6 +44,11 @@ export default function ProductsPage() {
     };
     fetchProducts();
   }, [currentPage, searchTerm, sortBy]);
+
+  // Function to update the page number in the URL
+  const handlePageChange = (newPage: number) => {
+    router.push(`?page=${newPage}`, { scroll: false });
+  };
 
   return (
     <div>
@@ -83,17 +92,23 @@ export default function ProductsPage() {
           <PaginationContent>
             <PaginationItem>
               <PaginationPrevious
-                href="#"
-                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                href={`?page=${Math.max(currentPage - 1, 1)}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  handlePageChange(Math.max(currentPage - 1, 1));
+                }}
               />
             </PaginationItem>
             <PaginationItem>
-              <PaginationLink href="#">{currentPage}</PaginationLink>
+              <PaginationLink href={`?page=${currentPage}`}>{currentPage}</PaginationLink>
             </PaginationItem>
             <PaginationItem>
               <PaginationNext
-                href="#"
-                onClick={() => setCurrentPage((prev) => prev + 1)}
+                href={`?page=${currentPage + 1}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  handlePageChange(currentPage + 1);
+                }}
               />
             </PaginationItem>
           </PaginationContent>
