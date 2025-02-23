@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
+import Header from "@/components/header_ecommerce";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -111,6 +112,8 @@ export default function CheckoutPage() {
   };
 
   return (
+    <>
+    <Header onSearch={(term) => console.log("Search term:", term)} />
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4 max-w-6xl">
         <h1 className="text-3xl font-bold mb-8">Checkout</h1>
@@ -220,5 +223,6 @@ export default function CheckoutPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }
