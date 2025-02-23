@@ -9,7 +9,7 @@ interface ProductCardProps {
 
 export default function ProductCard({ product }: ProductCardProps) {
   return (
-    <Card>
+    <Card className="transition-transform duration-200 ease-in-out hover:scale-105 hover:shadow-lg">
       <CardHeader>
         <img
           src={product.images[0]?.image_url || "/placeholder-image.png"}
@@ -21,6 +21,7 @@ export default function ProductCard({ product }: ProductCardProps) {
           }}
         />
       </CardHeader>
+
       <CardContent>
         <CardTitle>{product.name}</CardTitle>
         <CardDescription>{product.description}</CardDescription>
