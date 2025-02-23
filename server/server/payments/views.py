@@ -1,17 +1,19 @@
-import json
-import uuid
+from django.http import HttpResponse
+from django.shortcuts import redirect
+from rest_framework import viewsets, status
+from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from django.views.decorators.csrf import csrf_exempt
 from decouple import config
 import requests
-from django.http import HttpResponse
-from rest_framework import viewsets, status
-from rest_framework.decorators import action
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
+import hmac
+import hashlib
+import json
+import uuid
+from ecommerce.models import Cart, Order
 from .models import Payment, PaymentWebhookLog
 from .serializers import PaymentSerializer, PaymentInitializeSerializer
-from ecommerce.models import Cart, Order
 
 class PaymentViewSet(viewsets.ModelViewSet):
     queryset = Payment.objects.all()
@@ -47,7 +49,8 @@ class PaymentViewSet(viewsets.ModelViewSet):
                 "email": payment.email,
                 "amount": int(payment.amount * 100),  # Convert to kobo
                 "reference": payment.reference,
-                "callback_url": config('PAYMENT_CALLBACK_URL')
+                "callback_url": f"{config('BACKEND_URL', 'http://localhost:8000')}/payments/verify/",
+                "channels": ["card", "bank", "ussd"],  # Enable different payment methods
             }
 
             try:
@@ -71,77 +74,115 @@ class PaymentViewSet(viewsets.ModelViewSet):
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(detail=False, methods=['get'], url_path='verify/(?P<reference>[^/.]+)')
-    def verify_payment(self, request, reference):
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def paystack_webhook(request):
+    # Verify webhook signature
+    paystack_secret = config('PAYSTACK_SECRET_KEY').encode('utf-8')
+    paystack_signature = request.headers.get('x-paystack-signature')
+    request_body = request.body.decode('utf-8')
+
+    if not paystack_signature:
+        return HttpResponse(status=400)
+
+    # Generate HMAC SHA512 signature
+    expected_signature = hmac.new(
+        paystack_secret,
+        request_body.encode('utf-8'),
+        hashlib.sha512
+    ).hexdigest()
+
+    # Compare signatures securely
+    if not hmac.compare_digest(expected_signature, paystack_signature):
+        return HttpResponse(status=403)
+
+    try:
+        payload = json.loads(request_body)
+    except json.JSONDecodeError:
+        return HttpResponse(status=400)
+
+    # Log webhook event
+    PaymentWebhookLog.objects.create(
+        payload=payload,
+        event_type=payload.get('event'),
+        reference=payload.get('data', {}).get('reference', '')
+    )
+
+    # Process payment success event
+    if payload['event'] == 'charge.success':
+        reference = payload['data']['reference']
         try:
             payment = Payment.objects.get(reference=reference)
-            
-            # Verify on Paystack
-            url = f"https://api.paystack.co/transaction/verify/{reference}"
-            headers = {
-                "Authorization": f"Bearer {config('PAYSTACK_SECRET_KEY')}"
-            }
-            
-            response = requests.get(url, headers=headers)
-            response_data = response.json()
 
-            if response_data['status']:
+            if payment.status == 'success':
+                return HttpResponse(status=200)
+
+            payment.status = 'success'
+            payment.paystack_payment_id = payload['data']['id']
+            payment.save()
+
+            payment.order.status = 'pending'
+            payment.order.save()
+
+        except Payment.DoesNotExist:
+            return HttpResponse(status=404)
+
+    return HttpResponse(status=200)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def verify_payment(request):
+    reference = request.GET.get('reference') or request.GET.get('trxref')
+    if not reference:
+        return Response({'error': 'No reference provided'}, status=400)
+
+    try:
+        url = f"https://api.paystack.co/transaction/verify/{reference}"
+        headers = {
+            "Authorization": f"Bearer {config('PAYSTACK_SECRET_KEY')}",
+            "Content-Type": "application/json"
+        }
+        
+        response = requests.get(url, headers=headers)
+        response_data = response.json()
+
+        if response_data['status']:
+            try:
+                payment = Payment.objects.get(reference=reference)
+                
                 if response_data['data']['status'] == 'success':
-                    # Update payment and order status
                     payment.status = 'success'
                     payment.paystack_payment_id = response_data['data']['id']
                     payment.save()
-                    
-                    payment.order.status = 'pending'  # Order status changes to pending after successful payment
+
+                    payment.order.status = 'pending'
                     payment.order.save()
+
+                    # Get the frontend URL from environment variables
+                    frontend_success_url = config('FRONTEND_SUCCESS_URL', default='http://localhost:3000/payment/success')
                     
-                    # Clear the cart
-                    Cart.objects.filter(user=request.user).delete()
+                    # Perform redirect to frontend
+                    return redirect(f"{frontend_success_url}?reference={reference}")
                     
-                    return Response({"status": "Payment verified successfully"})
-            
-            return Response(
-                {"error": "Payment verification failed"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-            
-        except Payment.DoesNotExist:
-            return Response(
-                {"error": "Payment not found"},
-                status=status.HTTP_404_NOT_FOUND
-            )
+                return Response({
+                    'status': 'failed',
+                    'message': 'Payment verification failed'
+                }, status=400)
 
-    @method_decorator(csrf_exempt)
-    @action(detail=False, methods=['post'], url_path='webhook', permission_classes=[])
-    def webhook(self, request):
-        # Verify webhook signature
-        paystack_signature = request.headers.get('x-paystack-signature')
-        
-        if not paystack_signature:
-            return HttpResponse(status=400)
-
-        # Log webhook
-        payload = json.loads(request.body)
-        PaymentWebhookLog.objects.create(
-            payload=payload,
-            event_type=payload.get('event'),
-            reference=payload.get('data', {}).get('reference', '')
-        )
-
-        # Process webhook
-        if payload['event'] == 'charge.success':
-            reference = payload['data']['reference']
-            try:
-                payment = Payment.objects.get(reference=reference)
-                payment.status = 'success'
-                payment.paystack_payment_id = payload['data']['id']
-                payment.save()
-                
-                # Update order status
-                payment.order.status = 'pending'
-                payment.order.save()
-                
             except Payment.DoesNotExist:
-                pass
+                return Response({
+                    'status': 'failed',
+                    'message': 'Payment not found'
+                }, status=404)
 
-        return HttpResponse(status=200)
+        return Response({
+            'status': 'failed',
+            'message': 'Unable to verify payment'
+        }, status=400)
+
+    except Exception as e:
+        return Response({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
