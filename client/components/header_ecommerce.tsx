@@ -37,7 +37,7 @@ const navItems: NavItem[] = [
 ];
 
 interface HeaderProps {
-  onSearch: (term: string) => void; // Callback to handle search input
+  onSearch?: (term: string) => void; // makes onsearch optional 
 }
 
 export default function Header({ onSearch }: HeaderProps) {
@@ -48,7 +48,9 @@ export default function Header({ onSearch }: HeaderProps) {
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const term = e.target.value;
     setSearchTerm(term);
-    onSearch(term); // Pass the search term to the parent component
+    if (onSearch) { // Only call if defined
+      onSearch(term);
+    }
   };
 
   return (

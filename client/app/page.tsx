@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import axios from "axios";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
@@ -7,12 +8,17 @@ import ProductList from "./StoreProductList";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Product } from "@/types/types_inventory";
 import Header from "@/components/header_ecommerce";
+import { Skeleton } from "@/components/ui/skeleton";
+import FooterEcommerce from "@/components/footer_ecommerce";
 
 export default function ProductsPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const currentPage = Number(searchParams.get("page")) || 1;
   const [products, setProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("price"); // Default to ascending price
-  const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -40,15 +46,17 @@ export default function ProductsPage() {
     fetchProducts();
   }, [currentPage, searchTerm, sortBy]);
 
-  if (loading) return <div>Loading...</div>;
+  // Function to update the page number in the URL
+  const handlePageChange = (newPage: number) => {
+    router.push(`?page=${newPage}`, { scroll: false });
+  };
 
   return (
-    <div>
+    <div className="flex flex-col min-h-screen">
       {/* Include the Header component */}
       <Header onSearch={setSearchTerm} />
-
-      <div className="container mx-auto p-4">
-
+  
+      <div className="container mx-auto p-4 flex-grow">
         {/* Filters */}
         <div className="flex flex-col md:flex-row gap-4 mb-6">
           <Select value={sortBy} onValueChange={setSortBy}>
@@ -61,37 +69,54 @@ export default function ProductsPage() {
             </SelectContent>
           </Select>
         </div>
-
+  
         {/* Product List */}
         <ScrollArea className="h-[600px]">
-          {products.length > 0 ? (
-            <ProductList products={products} />
+          {loading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <div key={index} className="p-4 border rounded-lg">
+                  <Skeleton className="w-full h-40 mb-4" />
+                  <Skeleton className="h-6 w-3/4 mb-2" />
+                  <Skeleton className="h-6 w-1/2" />
+                </div>
+              ))}
+            </div>
           ) : (
-            <div>No products available.</div>
+            products.length > 0 ? <ProductList products={products} /> : <div>No products available.</div>
           )}
         </ScrollArea>
-
+  
         {/* Pagination */}
         <Pagination className="mt-6">
           <PaginationContent>
             <PaginationItem>
               <PaginationPrevious
-                href="#"
-                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                href={`?page=${Math.max(currentPage - 1, 1)}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  handlePageChange(Math.max(currentPage - 1, 1));
+                }}
               />
             </PaginationItem>
             <PaginationItem>
-              <PaginationLink href="#">{currentPage}</PaginationLink>
+              <PaginationLink href={`?page=${currentPage}`}>{currentPage}</PaginationLink>
             </PaginationItem>
             <PaginationItem>
               <PaginationNext
-                href="#"
-                onClick={() => setCurrentPage((prev) => prev + 1)}
+                href={`?page=${currentPage + 1}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  handlePageChange(currentPage + 1);
+                }}
               />
             </PaginationItem>
           </PaginationContent>
         </Pagination>
       </div>
+  
+      {/* Footer */}
+      <FooterEcommerce />
     </div>
   );
 }
