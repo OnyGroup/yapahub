@@ -14,7 +14,8 @@ export default function ProductList({ products }: ProductListProps) {
   const router = useRouter();
   const { updateCartCount } = useCart();
 
-  const handleAddToCart = async (productId: number) => {
+  const handleAddToCart = async (productId: number, event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevents navigating when clicking 'Add to Cart'
     try {
       // First add the item to cart
       const response = await axios.post(
@@ -58,13 +59,10 @@ export default function ProductList({ products }: ProductListProps) {
           {/* Product Card */}
           <ProductCard product={product} />
 
-          {/* Add to Cart Button (Prevents Click from Redirecting) */}
-          <div
-            className="absolute bottom-10 right-10"
-            onClick={(e) => e.stopPropagation()} // Prevents navigating when clicking 'Add to Cart'
-          >
+          {/* Add to Cart Button (Fixes Unintended Navigation) */}
+          <div className="absolute bottom-10 right-10">
             <Button
-              onClick={() => handleAddToCart(product.id)}
+              onClick={(e) => handleAddToCart(product.id, e)} // Pass event to stop propagation
               className="px-4 py-2 text-sm hover:scale-105 transition-transform"
             >
               Add to Cart
