@@ -91,7 +91,15 @@ export default function ProductDetails() {
   
         <div className="container mx-auto p-6 flex-grow">
           {loading ? (
-            <Skeleton className="w-full h-96" />
+            <div className="max-w-4xl mx-auto p-6">
+              <Card className="p-6">
+                <Skeleton className="w-full h-64 mb-4" /> 
+                <Skeleton className="h-6 w-3/4 mb-2" />
+                <Skeleton className="h-4 w-1/2 mb-4" />
+                <Skeleton className="h-4 w-1/3 mb-4" />
+                <Skeleton className="h-10 w-1/2" />
+              </Card>
+            </div>
           ) : product ? (
             <Card className="max-w-4xl mx-auto p-6">
               <CardHeader className="flex flex-col items-center">
@@ -120,12 +128,9 @@ export default function ProductDetails() {
                   <strong>Size:</strong> {product.size} | <strong>Color:</strong> {product.color}
                 </p>
                 <p className="text-gray-600 mt-1">
-                  <strong>Stock:</strong> {product.stock} | <strong>SKU:</strong> {product.sku}
-                </p>
-                <p className="text-gray-600 mt-1">
                   <strong>Category:</strong> {product.category_name}
                 </p>
-                <p className="text-primary font-bold text-lg mt-4">Ksh {product.price}</p>
+                <p className="text-primary font-bold text-lg mt-4">KSh {product.price}</p>
   
                 {/* ✅ Working Add to Cart Button */}
                 <button 
