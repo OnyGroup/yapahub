@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import axios from "axios";
 import {
   Table,
@@ -21,14 +22,18 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { useToast } from "@/hooks/use-toast";
 import { Category, InventoryItem } from "@/types/types_inventory";
 import InventoryActions from "./InventoryActions";
 
 export default function InventoryDashboard() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const currentPage = Number(searchParams.get("page")) || 1;
+
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [newProduct, setNewProduct] = useState({
@@ -46,19 +51,25 @@ export default function InventoryDashboard() {
   const [isDialogOpen, setIsDialogOpen] = useState(false); // State to control dialog visibility
   const [visibleImages, setVisibleImages] = useState<number[]>([]); // Track visible images by product ID
   const [isEditing, setIsEditing] = useState(false); // Track edit mode
+  const [totalCount, setTotalCount] = useState(0);
+  const [nextPageUrl, setNextPageUrl] = useState<string | null>(null);
+  const [prevPageUrl, setPrevPageUrl] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Fetch inventory and categories on component mount
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch inventory
-        const inventoryResponse = await axios.get("http://127.0.0.1:8000/store/products/", {
+        // Fetch inventory with pagination
+        const inventoryResponse = await axios.get(`http://127.0.0.1:8000/store/products/?page=${currentPage}`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
           },
         });
         setInventory(inventoryResponse.data.results);
+        setTotalCount(inventoryResponse.data.count);
+        setNextPageUrl(inventoryResponse.data.next);
+        setPrevPageUrl(inventoryResponse.data.previous);
 
         // Fetch categories
         const categoriesResponse = await axios.get("http://127.0.0.1:8000/store/categories/", {
@@ -75,7 +86,7 @@ export default function InventoryDashboard() {
     };
 
     fetchData();
-  }, []);
+  }, [currentPage]);
 
   const handleAddProduct = async () => {
     try {
@@ -100,12 +111,15 @@ export default function InventoryDashboard() {
       });
 
       // Refresh inventory after adding
-      const response = await axios.get("http://127.0.0.1:8000/store/products/", {
+      const response = await axios.get(`http://127.0.0.1:8000/store/products/?page=${currentPage}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
         },
       });
       setInventory(response.data.results);
+      setTotalCount(response.data.count);
+      setNextPageUrl(response.data.next);
+      setPrevPageUrl(response.data.previous);
 
       // Reset form and close dialog
       setNewProduct({
@@ -178,6 +192,11 @@ export default function InventoryDashboard() {
       setVisibleImages((prev) => [...prev, id]);
     }
   };
+
+    // Function to update the page number in the URL
+    const handlePageChange = (newPage: number) => {
+      router.push(`?page=${newPage}`, { scroll: false });
+    };
 
   if (loading) return <div>Loading...</div>;
 
@@ -347,6 +366,39 @@ export default function InventoryDashboard() {
           </TableBody>
         </Table>
       </ScrollArea>
+
+        {/* Pagination */}
+        <Pagination className="mt-6">
+        <PaginationContent>
+          <PaginationItem>
+            <PaginationPrevious
+              href={prevPageUrl ? `?page=${currentPage - 1}` : "#"}
+              onClick={(e) => {
+                e.preventDefault();
+                if (prevPageUrl) {
+                  handlePageChange(currentPage - 1);
+                }
+              }}
+              className={!prevPageUrl ? "opacity-50 cursor-not-allowed" : ""}
+            />
+          </PaginationItem>
+          <PaginationItem>
+            <PaginationLink href={`?page=${currentPage}`}>{currentPage}</PaginationLink>
+          </PaginationItem>
+          <PaginationItem>
+            <PaginationNext
+              href={nextPageUrl ? `?page=${currentPage + 1}` : "#"}
+              onClick={(e) => {
+                e.preventDefault();
+                if (nextPageUrl) {
+                  handlePageChange(currentPage + 1);
+                }
+              }}
+              className={!nextPageUrl ? "opacity-50 cursor-not-allowed" : ""}
+            />
+          </PaginationItem>
+        </PaginationContent>
+      </Pagination>
     </div>
   );
 }

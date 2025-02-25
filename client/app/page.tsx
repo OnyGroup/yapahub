@@ -5,7 +5,6 @@ import axios from "axios";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import ProductList from "./StoreProductList";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Product } from "@/types/types_inventory";
 import Header from "@/components/header_ecommerce";
 import { Skeleton } from "@/components/ui/skeleton";
