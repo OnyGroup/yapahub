@@ -9,13 +9,15 @@ import Header from "@/components/header_ecommerce";
 import FooterEcommerce from "@/components/footer_ecommerce";
 import Image from "next/image";
 import { Product } from "@/types/types_inventory";
-import { useCart } from "@/components/CartContext"; 
+import { useCart } from "@/components/CartContext";
+import { useToast } from "@/hooks/use-toast";
 
 export default function ProductDetails() {
   const { id } = useParams(); // Get product ID from dynamic route
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const { updateCartCount } = useCart();
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!id) return;
@@ -63,10 +65,23 @@ export default function ProductDetails() {
   
         // ✅ Update cart count in context
         updateCartCount(cartItemsResponse.data.total_items);
-        alert("Item added to cart! 🛒");
+
+        // ✅ Show success toast
+        toast({
+          title: "Added to Cart 🛒",
+          description: `${product.name} has been added to your cart!`,
+          variant: "default",
+        });
+
       } catch (error) {
         console.error("Failed to add item to cart", error);
-        alert("Failed to add to cart. Please try again.");
+
+        // ✅ Show error toast
+        toast({
+          title: "Error",
+          description: "Failed to add item to cart. Please try again.",
+          variant: "destructive",
+        });
       }
     };
 
