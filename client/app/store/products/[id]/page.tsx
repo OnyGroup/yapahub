@@ -9,11 +9,13 @@ import Header from "@/components/header_ecommerce";
 import FooterEcommerce from "@/components/footer_ecommerce";
 import Image from "next/image";
 import { Product } from "@/types/types_inventory";
+import { useCart } from "@/components/CartContext"; 
 
 export default function ProductDetails() {
   const { id } = useParams(); // Get product ID from dynamic route
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
+  const { updateCartCount } = useCart();
 
   useEffect(() => {
     if (!id) return;
@@ -32,58 +34,99 @@ export default function ProductDetails() {
     fetchProductDetails();
   }, [id]);
 
-  return (
-    <div className="flex flex-col min-h-screen">
-      <Header />
+    // ✅ Function to add the product to the cart
+    const handleAddToCart = async () => {
+      if (!product) return;
+  
+      try {
+        const response = await axios.post(
+          "http://127.0.0.1:8000/store/carts/add/",
+          { product_id: product.id },
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+            },
+          }
+        );
+  
+        const cartId = response.data.id;
+  
+        // ✅ Fetch updated cart total items
+        const cartItemsResponse = await axios.get(
+          `http://127.0.0.1:8000/store/carts/${cartId}/total-items/`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+            },
+          }
+        );
+  
+        // ✅ Update cart count in context
+        updateCartCount(cartItemsResponse.data.total_items);
+        alert("Item added to cart! 🛒");
+      } catch (error) {
+        console.error("Failed to add item to cart", error);
+        alert("Failed to add to cart. Please try again.");
+      }
+    };
 
-      <div className="container mx-auto p-6 flex-grow">
-        {loading ? (
-          <Skeleton className="w-full h-96" />
-        ) : product ? (
-          <Card className="max-w-4xl mx-auto p-6">
-            <CardHeader className="flex flex-col items-center">
-              {product.images.length > 0 ? (
-                <Image 
-                  src={product.images[0].image_url} // Display first image
-                  alt={product.name} 
-                  width={400} 
-                  height={300} 
-                  className="object-cover w-full h-64"
-                />
-              ) : (
-                <Image 
-                  src="/placeholder.png" 
-                  alt="Placeholder image" 
-                  width={400} 
-                  height={300} 
-                  className="object-cover w-full h-64"
-                />
-              )}
-            </CardHeader>
-            <CardContent>
-              <CardTitle>{product.name}</CardTitle>
-              <p className="text-gray-600 mt-2">{product.description}</p>
-              <p className="text-gray-600 mt-1">
-                <strong>Size:</strong> {product.size} | <strong>Color:</strong> {product.color}
-              </p>
-              <p className="text-gray-600 mt-1">
-                <strong>Stock:</strong> {product.stock} | <strong>SKU:</strong> {product.sku}
-              </p>
-              <p className="text-gray-600 mt-1">
-                <strong>Category:</strong> {product.category_name}
-              </p>
-              <p className="text-primary font-bold text-lg mt-4">Ksh {product.price}</p>
-              <button className="mt-4 bg-blue-600 text-white px-6 py-2 rounded-lg">
-                Add to Cart
-              </button>
-            </CardContent>
-          </Card>
-        ) : (
-          <p className="text-center text-gray-500">Product not found.</p>
-        )}
+    return (
+      <div className="flex flex-col min-h-screen">
+        <Header />
+  
+        <div className="container mx-auto p-6 flex-grow">
+          {loading ? (
+            <Skeleton className="w-full h-96" />
+          ) : product ? (
+            <Card className="max-w-4xl mx-auto p-6">
+              <CardHeader className="flex flex-col items-center">
+                {product.images.length > 0 ? (
+                  <Image 
+                    src={product.images[0].image_url} 
+                    alt={product.name} 
+                    width={400} 
+                    height={300} 
+                    className="object-cover w-full h-64"
+                  />
+                ) : (
+                  <Image 
+                    src="/placeholder.png" 
+                    alt="Placeholder image" 
+                    width={400} 
+                    height={300} 
+                    className="object-cover w-full h-64"
+                  />
+                )}
+              </CardHeader>
+              <CardContent>
+                <CardTitle>{product.name}</CardTitle>
+                <p className="text-gray-600 mt-2">{product.description}</p>
+                <p className="text-gray-600 mt-1">
+                  <strong>Size:</strong> {product.size} | <strong>Color:</strong> {product.color}
+                </p>
+                <p className="text-gray-600 mt-1">
+                  <strong>Stock:</strong> {product.stock} | <strong>SKU:</strong> {product.sku}
+                </p>
+                <p className="text-gray-600 mt-1">
+                  <strong>Category:</strong> {product.category_name}
+                </p>
+                <p className="text-primary font-bold text-lg mt-4">Ksh {product.price}</p>
+  
+                {/* ✅ Working Add to Cart Button */}
+                <button 
+                  onClick={handleAddToCart} 
+                  className="mt-4 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition"
+                >
+                  Add to Cart
+                </button>
+              </CardContent>
+            </Card>
+          ) : (
+            <p className="text-center text-gray-500">Product not found.</p>
+          )}
+        </div>
+  
+        <FooterEcommerce />
       </div>
-
-      <FooterEcommerce />
-    </div>
-  );
-}
+    );
+  }
