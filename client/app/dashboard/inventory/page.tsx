@@ -238,24 +238,26 @@ export default function InventoryDashboard() {
             <Input
               type="number"
               step="0.01"
-              value={newProduct.price}
-              onChange={(e) =>
+              value={newProduct.price || ''}  // Empty string when 0
+              onChange={(e) => {
+                const value = e.target.value;
                 setNewProduct({
                   ...newProduct,
-                  price: parseFloat(e.target.value),
-                })
-              }
+                  price: value === '' ? 0 : parseFloat(value) || 0,
+                });
+              }}
             />
             <Label>Stock</Label>
             <Input
               type="number"
-              value={newProduct.stock}
-              onChange={(e) =>
+              value={newProduct.stock || ''}  // Empty string when 0
+              onChange={(e) => {
+                const value = e.target.value;
                 setNewProduct({
                   ...newProduct,
-                  stock: parseInt(e.target.value),
-                })
-              }
+                  stock: value === '' ? 0 : parseInt(value) || 0,
+                });
+              }}
             />
             <Label>SKU</Label>
             <Input
