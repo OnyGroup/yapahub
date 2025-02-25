@@ -218,7 +218,9 @@ const CustomersDashboard = () => {
               {customerData.top_clv_customers.map((customer, index) => (
                 <li key={index} className="flex justify-between py-2 border-b">
                   <span>{customer.username}</span>
-                  <Badge variant="secondary">${customer.total_spent.toFixed(2)}</Badge>
+                  <Badge variant="secondary">
+                    ${customer.total_spent ? customer.total_spent.toFixed(2) : "0.00"}
+                  </Badge>
                 </li>
               ))}
             </ul>
