@@ -22,8 +22,8 @@ export interface Category {
     description: string;
     size: string;
     color: string;
-    price: number;
-    stock: number;
+    price: number | null;
+    stock: number | null;
     sku: string;
     category: number;
     category_name: string;

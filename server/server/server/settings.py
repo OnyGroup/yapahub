@@ -57,6 +57,7 @@ cloudinary.config(
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -71,6 +72,7 @@ INSTALLED_APPS = [
     'ecommerce',
     'payments',
     'django_extensions',
+    'channels',
 
     # third party apps
     'rest_framework',
@@ -80,6 +82,12 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
 
 ]
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
+    },
+}
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -111,6 +119,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'server.wsgi.application'
+ASGI_APPLICATION = "server.asgi.application"
 
 
 # Database

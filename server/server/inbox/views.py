@@ -52,7 +52,7 @@ class ConversationView(APIView):
         messages = Message.objects.filter(
             Q(sender=request.user, recipient=other_user) |
             Q(sender=other_user, recipient=request.user)
-        ).order_by('timestamp')  # Oldest messages first
+        ).select_related('sender', 'recipient').order_by('timestamp')
 
         serializer = MessageSerializer(messages, many=True)
         return Response(serializer.data, status=200)

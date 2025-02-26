@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import Header from "@/components/header_ecommerce";
+import FooterEcommerce from "@/components/footer_ecommerce"; 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -223,6 +224,7 @@ export default function CheckoutPage() {
         </div>
       </div>
     </div>
+    <FooterEcommerce />
     </>
   );
 }

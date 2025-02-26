@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import { useCart } from "@/components/CartContext";
 import Header from "@/components/header_ecommerce";
+import FooterEcommerce from "@/components/footer_ecommerce"; 
 import { useToast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { useRouter } from "next/navigation";
@@ -125,9 +126,9 @@ export default function CartPage() {
   }
 
   return (
-    <div>
+    <div className="flex flex-col min-h-screen">  
       <Header onSearch={setSearchTerm} />
-      <div className="container mx-auto p-4">
+      <div className="container mx-auto p-4 max-w-3xl">
         <h1 className="text-3xl font-bold mb-6">Your Cart</h1>
 
         {cartItems.length > 0 ? (
@@ -202,12 +203,15 @@ export default function CartPage() {
           <div className="text-center py-8">
             <p className="text-gray-600 mb-4">Your cart is empty</p>
             <Button asChild>
-              <a href="/store">Continue Shopping</a>
+              <a href="/">Continue Shopping</a>
             </Button>
           </div>
         )}
+        </div>
+          <Toaster />
+        <div className="mt-auto">
+        <FooterEcommerce />
       </div>
-      <Toaster />
     </div>
   );
 }
