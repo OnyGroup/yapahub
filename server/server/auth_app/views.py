@@ -89,3 +89,10 @@ class LogoutView(APIView):
 
         except Exception as e:
             return Response({"error": str(e)}, status=400)
+
+class CurrentUserView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        return Response({"username": user.username}, status=status.HTTP_200_OK)
