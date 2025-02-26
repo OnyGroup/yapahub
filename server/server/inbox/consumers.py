@@ -1,6 +1,8 @@
 # inbox/consumers.py
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
+from .models import Message
+from channels.db import database_sync_to_async
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -37,16 +39,48 @@ class ChatConsumer(AsyncWebsocketConsumer):
         try:
             data = json.loads(text_data)
             message = data.get("message", "")
-            sender = self.scope["user"].username
             
-            # Send message to room group
+            # Handle authentication message
+            if data.get("type") == "authenticate":
+                # Authentication logic would go here
+                return
+                
+            recipient = data.get("recipient", "")
+            subject = data.get("subject", "")
+            
+            user = self.scope["user"]
+            sender = user.username
+            
+            # Create the message in the database
+            # This is pseudo-code - adjust based on your actual models
+            message_obj = await database_sync_to_async(Message.objects.create)(
+                sender=user,
+                recipient_username=recipient,
+                subject=subject,
+                body=message
+            )
+            
+            # Convert to dict for serialization
+            message_data = {
+                "type": "chat_message",
+                "id": message_obj.id,
+                "message": message,
+                "sender": sender,
+                "recipient": recipient,
+                "subject": subject,
+                "timestamp": message_obj.timestamp.isoformat()
+            }
+            
+            # Send to sender's group
             await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    "type": "chat_message",
-                    "message": message,
-                    "sender": sender,
-                }
+                f"chat_{sender}",
+                message_data
+            )
+            
+            # Send to recipient's group
+            await self.channel_layer.group_send(
+                f"chat_{recipient}",
+                message_data
             )
         except json.JSONDecodeError:
             await self.send(text_data=json.dumps({

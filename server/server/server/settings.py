@@ -38,7 +38,7 @@ PAYMENT_CALLBACK_URL = config("PAYMENT_CALLBACK_URL")
 ALLOWED_HOSTS = [
     "127.0.0.1",
     "localhost",
-    "9e74-41-90-186-216.ngrok-free.app"  # Ngrok URL
+    "5265-41-90-182-93.ngrok-free.app"  # Ngrok URL
 ]
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
