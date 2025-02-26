@@ -71,6 +71,7 @@ INSTALLED_APPS = [
     'ecommerce',
     'payments',
     'django_extensions',
+    'channels',
 
     # third party apps
     'rest_framework',
@@ -80,6 +81,12 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
 
 ]
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
+    },
+}
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',

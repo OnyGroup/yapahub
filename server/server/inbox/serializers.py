@@ -13,24 +13,22 @@ class MessageSerializer(serializers.ModelSerializer):
         fields = ['id', 'sender', 'recipient', 'sender_username', 'recipient_username', 'subject', 'body', 'timestamp', 'is_read']
 
     def validate_recipient(self, value):
-        """Ensure the recipient exists in the database."""
+        """Ensure the recipient exists and prevent self-messaging."""
+        request_user = self.context['request'].user  # Get the currently authenticated user
+
+        if value == request_user.username:
+            raise serializers.ValidationError("You cannot send a message to yourself.")
+
         try:
-            user = User.objects.get(username=value)  # Look up recipient by username
+            user = User.objects.get(username=value)  # Convert the username to a User object
         except User.DoesNotExist:
             raise serializers.ValidationError("Recipient user does not exist.")
+
         return user
 
     def create(self, validated_data):
-        """Create a new message."""
-        recipient_username = validated_data.pop("recipient")  # Get the recipient username
-        try:
-            recipient = User.objects.get(username=recipient_username)  # Convert to User object
-        except User.DoesNotExist:
-            raise serializers.ValidationError({"recipient": "Recipient user does not exist."})
-
-        # Create the message with the recipient as a User object
-        message = Message.objects.create(recipient=recipient, **validated_data)
-        return message
+        """Create a new message with the validated recipient."""
+        return Message.objects.create(**validated_data) 
 
 class TicketSerializer(serializers.ModelSerializer):
     class Meta:
