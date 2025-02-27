@@ -68,7 +68,7 @@ const Inbox = () => {
     if (!token) return;
     
     // Create WebSocket connection
-    const socket = new WebSocket(`ws://127.0.0.1:8000/ws/chat/${currentUsername}/`);
+    const socket = new WebSocket(`ws://127.0.0.1:8000/ws/chat/${currentUsername}/?token=${token}`);
     socketRef.current = socket;
 
     // Connection opened
