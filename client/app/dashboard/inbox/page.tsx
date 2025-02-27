@@ -272,9 +272,10 @@ const Inbox = () => {
   }
 
   return (
-    <div className="flex flex-1 overflow-hidden">
-      <div className="w-1/3 border-r bg-background">
-        <div className="p-4">
+    <div className="flex flex-1 h-screen overflow-hidden">
+      {/* Left sidebar - User list */}
+      <div className="w-1/3 border-r bg-background flex flex-col h-full overflow-hidden">
+        <div className="p-4 border-b">
           <h1 className="text-2xl font-semibold mb-4">Inbox</h1>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
@@ -295,7 +296,7 @@ const Inbox = () => {
             </DialogContent>
           </Dialog>
         </div>
-        <ScrollArea className="h-[calc(100vh-10rem)]">
+        <ScrollArea className="flex-1">
           {Object.entries(conversations).map(([partner, partnerMessages]) => {
             const lastMessage = partnerMessages[partnerMessages.length - 1];
             return (
@@ -326,74 +327,78 @@ const Inbox = () => {
           })}
         </ScrollArea>
       </div>
-      <div className="flex-1 flex flex-col overflow-hidden">
+  
+      {/* Right side - Conversation */}
+      <div className="flex-1 flex flex-col h-full overflow-hidden">
         {selectedConversation ? (
           <>
             <div className="bg-white p-4 border-b">
               <h2 className="text-xl font-semibold">{selectedConversation}</h2>
             </div>
-            <ScrollArea className="flex-1 p-4">
-              {conversations[selectedConversation]?.map((message) => (
-                <Card key={message.id} className={`mb-4 ${message.sender_username === currentUsername ? 'ml-12 bg-primary/10' : 'mr-12'}`}>
-                  <CardContent className="p-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <h3 className="font-semibold">{message.subject}</h3>
-                      <span className="text-sm text-muted-foreground">{new Date(message.timestamp).toLocaleString()}</span>
-                    </div>
-                    <div className="flex items-start space-x-2 mb-2">
-                      <span className="font-medium text-xs text-muted-foreground">
-                        {message.sender_username === currentUsername ? 'You' : message.sender_username}
-                      </span>
-                    </div>
-                    <p className="text-foreground mb-4">{message.body}</p>
-                    {message.sender_username !== currentUsername && (
-                      <Button variant="outline" size="sm" onClick={() => setReplyTo(message.id)}>
-                        Reply
-                      </Button>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
+            <ScrollArea className="flex-1">
+              <div className="p-4">
+                {conversations[selectedConversation]?.map((message) => (
+                  <Card key={message.id} className={`mb-4 ${message.sender_username === currentUsername ? 'ml-12 bg-primary/10' : 'mr-12'}`}>
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <h3 className="font-semibold">{message.subject}</h3>
+                        <span className="text-sm text-muted-foreground">{new Date(message.timestamp).toLocaleString()}</span>
+                      </div>
+                      <div className="flex items-start space-x-2 mb-2">
+                        <span className="font-medium text-xs text-muted-foreground">
+                          {message.sender_username === currentUsername ? 'You' : message.sender_username}
+                        </span>
+                      </div>
+                      <p className="text-foreground mb-4">{message.body}</p>
+                      {message.sender_username !== currentUsername && (
+                        <Button variant="outline" size="sm" onClick={() => setReplyTo(message.id)}>
+                          Reply
+                        </Button>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             </ScrollArea>
             {replyTo ? (
-  <div className="p-4 bg-white border-t">
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <Input name="recipient" value={selectedConversation} hidden readOnly />
-      <Input
-        name="subject"
-        placeholder="Subject"
-        required
-        defaultValue={`Re: ${conversations[selectedConversation]?.find((m) => m.id === replyTo)?.subject}`}
-      />
-      <Textarea name="body" placeholder="Type your reply..." required className="min-h-[100px]" />
-      <div className="flex justify-end space-x-2">
-        <Button type="button" variant="outline" onClick={() => setReplyTo(null)}>
-          Cancel
-        </Button>
-        <Button type="submit">Send Reply</Button>
-      </div>
-    </form>
-  </div>
-) : (
-  <div className="p-4 bg-white border-t">
-    <form onSubmit={handleSubmit} className="flex flex-col space-y-2">
-      <Input name="recipient" value={selectedConversation} hidden readOnly />
-      <div className="flex space-x-2">
-        <div className="flex-1">
-          <Input name="subject" placeholder="Subject" required />
-        </div>
-      </div>
-      <div className="flex space-x-2">
-        <div className="flex-1">
-          <Input name="body" placeholder="Type a message..." required />
-        </div>
-        <Button type="submit" size="sm">
-          Send
-        </Button>
-      </div>
-    </form>
-  </div>
-)}
+              <div className="p-4 bg-white border-t">
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <Input name="recipient" value={selectedConversation} hidden readOnly />
+                  <Input
+                    name="subject"
+                    placeholder="Subject"
+                    required
+                    defaultValue={`Re: ${conversations[selectedConversation]?.find((m) => m.id === replyTo)?.subject}`}
+                  />
+                  <Textarea name="body" placeholder="Type your reply..." required className="min-h-[100px]" />
+                  <div className="flex justify-end space-x-2">
+                    <Button type="button" variant="outline" onClick={() => setReplyTo(null)}>
+                      Cancel
+                    </Button>
+                    <Button type="submit">Send Reply</Button>
+                  </div>
+                </form>
+              </div>
+            ) : (
+              <div className="p-4 bg-white border-t">
+                <form onSubmit={handleSubmit} className="flex flex-col space-y-2">
+                  <Input name="recipient" value={selectedConversation} hidden readOnly />
+                  <div className="flex space-x-2">
+                    <div className="flex-1">
+                      <Input name="subject" placeholder="Subject" required />
+                    </div>
+                  </div>
+                  <div className="flex space-x-2">
+                    <div className="flex-1">
+                      <Input name="body" placeholder="Type a message..." required />
+                    </div>
+                    <Button type="submit" size="sm">
+                      Send
+                    </Button>
+                  </div>
+                </form>
+              </div>
+            )}
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center text-muted-foreground">
@@ -402,7 +407,7 @@ const Inbox = () => {
         )}
       </div>
     </div>
-  )
+  );
 }
 
 export default Inbox
