@@ -98,11 +98,14 @@ const Inbox = () => {
           return prevMessages;
         });        
         
-        // Show notification
-        toast({
-          title: `New message from ${data.sender}`,
-          description: data.message.substring(0, 50) + (data.message.length > 50 ? '...' : ''),
-        });
+        // Show notification for received messages only
+        // Check that this is not the sender viewing their own sent message
+        if (data.sender !== currentUsername) {
+          toast({
+            title: `New message from ${data.sender}`,
+            description: data.message.substring(0, 50) + (data.message.length > 50 ? '...' : ''),
+          });
+        }
       }
     });
 
