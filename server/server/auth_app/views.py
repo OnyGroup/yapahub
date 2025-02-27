@@ -5,6 +5,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.contrib.auth.models import Group, User
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
+from .models import UserProfile
 
 class RegisterView(APIView):
     permission_classes = [AllowAny]
@@ -14,9 +15,10 @@ class RegisterView(APIView):
         password = request.data.get("password")
         email = request.data.get("email")
         access_level = request.data.get("access_level")  # This field specifies the user's role
+        phone_number = request.data.get("phone_number", None) 
 
         if not username or not password or not email or not access_level:
-            return Response({"error": "All fields are required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "All fields except phone number are required"}, status=status.HTTP_400_BAD_REQUEST)
 
         if User.objects.filter(username=username).exists():
             return Response({"error": "Username already taken"}, status=status.HTTP_400_BAD_REQUEST)
@@ -38,6 +40,12 @@ class RegisterView(APIView):
             return Response({"error": "Invalid access level"}, status=status.HTTP_400_BAD_REQUEST)
 
         user.groups.add(group)
+
+        # Ensure UserProfile is created before assigning phone_number
+        profile, created = UserProfile.objects.get_or_create(user=user)
+        profile.phone_number = phone_number
+        profile.save()
+
         user.save()
 
         return Response({"message": f"{access_level.capitalize()} registered successfully"}, status=status.HTTP_201_CREATED)
@@ -64,7 +72,7 @@ class LoginView(APIView):
         return Response({
             "refresh": str(refresh),
             "access": str(refresh.access_token),
-            "roles": groups  # Include the roles in the response
+            "roles": groups  
         }, status=status.HTTP_200_OK)
 
 
@@ -95,4 +103,10 @@ class CurrentUserView(APIView):
 
     def get(self, request):
         user = request.user
-        return Response({"username": user.username}, status=status.HTTP_200_OK)
+        phone_number = user.profile.phone_number if hasattr(user, 'profile') else None
+        return Response({
+            "username": user.username,
+            "email": user.email,
+            "phone_number": phone_number
+        }, status=status.HTTP_200_OK)
+
