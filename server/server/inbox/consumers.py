@@ -62,6 +62,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
             
             print(f"Received message: from={sender}, to={recipient}, subject={subject}")
             
+            # Save message to database
+            message_id = await self.save_message(sender, recipient, subject, message)
+            
             # Send message to room group - both for sender and recipient
             await self.channel_layer.group_send(
                 self.room_group_name,
@@ -70,7 +73,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     "message": message,
                     "sender": sender,
                     "recipient": recipient,
-                    "subject": subject
+                    "subject": subject,
+                    "message_id": message_id
                 }
             )
             
@@ -85,7 +89,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                             "message": message,
                             "sender": sender,
                             "recipient": recipient,
-                            "subject": subject
+                            "subject": subject,
+                            "message_id": message_id
                         }
                     )
                     print(f"Message forwarded to recipient group: {recipient_group}")
@@ -102,6 +107,24 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 "error": f"Server error: {str(e)}"
             }))
 
+    @database_sync_to_async
+    def save_message(self, sender_username, recipient_username, subject, body):
+        try:
+            sender = User.objects.get(username=sender_username)
+            recipient = User.objects.get(username=recipient_username)
+            
+            message = Message.objects.create(
+                sender=sender, 
+                recipient=recipient, 
+                subject=subject,
+                body=body
+            )
+            
+            return message.id 
+        except User.DoesNotExist:
+            print(f"Error: One or both users not found - sender: {sender_username}, recipient: {recipient_username}")
+            return None
+
     async def chat_message(self, event):
         # Send message to WebSocket
         try:
@@ -109,7 +132,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 "message": event["message"],
                 "sender": event["sender"],
                 "recipient": event.get("recipient", ""),
-                "subject": event.get("subject", "")
+                "subject": event.get("subject", ""),
+                "message_id": event.get("message_id", None)
             }))
         except Exception as e:
             print(f"Error in chat_message: {e}")
