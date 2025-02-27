@@ -23,6 +23,12 @@ class RegisterView(APIView):
         if User.objects.filter(username=username).exists():
             return Response({"error": "Username already taken"}, status=status.HTTP_400_BAD_REQUEST)
 
+        if User.objects.filter(email=email).exists():
+            return Response({"error": "Email already registered"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # if phone_number and UserProfile.objects.filter(phone_number=phone_number).exists():
+        #     return Response({"error": "Phone number already registered"}, status=status.HTTP_400_BAD_REQUEST)
+
         user = User.objects.create_user(username=username, password=password, email=email)
 
         # Assigning the user to the appropriate group based on access_level
