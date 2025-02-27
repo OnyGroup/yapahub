@@ -355,26 +355,45 @@ const Inbox = () => {
                 </Card>
               ))}
             </ScrollArea>
-            {replyTo && (
-              <div className="p-4 bg-white border-t">
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <Input name="recipient" value={selectedConversation} hidden readOnly />
-                  <Input
-                    name="subject"
-                    placeholder="Subject"
-                    required
-                    defaultValue={`Re: ${conversations[selectedConversation]?.find((m) => m.id === replyTo)?.subject}`}
-                  />
-                  <Textarea name="body" placeholder="Type your reply..." required className="min-h-[100px]" />
-                  <div className="flex justify-end space-x-2">
-                    <Button type="button" variant="outline" onClick={() => setReplyTo(null)}>
-                      Cancel
-                    </Button>
-                    <Button type="submit">Send Reply</Button>
-                  </div>
-                </form>
-              </div>
-            )}
+            {replyTo ? (
+  <div className="p-4 bg-white border-t">
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <Input name="recipient" value={selectedConversation} hidden readOnly />
+      <Input
+        name="subject"
+        placeholder="Subject"
+        required
+        defaultValue={`Re: ${conversations[selectedConversation]?.find((m) => m.id === replyTo)?.subject}`}
+      />
+      <Textarea name="body" placeholder="Type your reply..." required className="min-h-[100px]" />
+      <div className="flex justify-end space-x-2">
+        <Button type="button" variant="outline" onClick={() => setReplyTo(null)}>
+          Cancel
+        </Button>
+        <Button type="submit">Send Reply</Button>
+      </div>
+    </form>
+  </div>
+) : (
+  <div className="p-4 bg-white border-t">
+    <form onSubmit={handleSubmit} className="flex flex-col space-y-2">
+      <Input name="recipient" value={selectedConversation} hidden readOnly />
+      <div className="flex space-x-2">
+        <div className="flex-1">
+          <Input name="subject" placeholder="Subject" required />
+        </div>
+      </div>
+      <div className="flex space-x-2">
+        <div className="flex-1">
+          <Input name="body" placeholder="Type a message..." required />
+        </div>
+        <Button type="submit" size="sm">
+          Send
+        </Button>
+      </div>
+    </form>
+  </div>
+)}
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center text-muted-foreground">
