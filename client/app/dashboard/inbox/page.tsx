@@ -217,7 +217,9 @@ const Inbox = () => {
       });
       
       // Clear form
-      event.currentTarget.reset();
+      if (event.currentTarget) {
+        event.currentTarget.reset();
+      }
     } catch (error) {
       // Show error toast
       toast({
