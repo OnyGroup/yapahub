@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import axios from "axios"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 // Define types for the message
 interface Message {
@@ -72,9 +72,7 @@ const Inbox = () => {
     socketRef.current = socket;
 
     // Connection opened
-    socket.addEventListener('open', (event) => {
-      console.log('WebSocket connection established');
-    });
+    socket.addEventListener("open", () => console.log("WebSocket connected"));
 
     // Listen for messages
     socket.addEventListener('message', (event) => {
@@ -93,7 +91,12 @@ const Inbox = () => {
         };
         
         // Add message to state
-        setMessages(prevMessages => [...prevMessages, newMessage]);
+        setMessages(prevMessages => {
+          if (!prevMessages.some(msg => msg.id === newMessage.id)) {
+            return [...prevMessages, newMessage]; // Prevent duplicates
+          }
+          return prevMessages;
+        });        
         
         // Show notification
         toast({
@@ -104,21 +107,19 @@ const Inbox = () => {
     });
 
     // Connection closed
-    socket.addEventListener('close', (event) => {
-      console.log('WebSocket connection closed');
-    });
+    socket.addEventListener("close", (event) => {
+      console.log("WebSocket connection closed, attempting to reconnect...");
+      setTimeout(() => {
+        if (!socketRef.current || socketRef.current.readyState === WebSocket.CLOSED) {
+          socketRef.current = new WebSocket(`ws://127.0.0.1:8000/ws/chat/${currentUsername}/`);
+        }
+      }, 3000);  // Reconnect after 3 seconds
+    });    
 
     // Connection error
-    socket.addEventListener('error', (event) => {
-      console.error('WebSocket error:', event);
-    });
+    socket.addEventListener("error", (event) => console.error("WebSocket error:", event));
 
-    // Cleanup function
-    return () => {
-      if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
-        socket.close();
-      }
-    };
+    return () => socket.close();
   }, [currentUsername, toast]);
 
   // Fetch initial messages
