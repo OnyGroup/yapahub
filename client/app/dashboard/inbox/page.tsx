@@ -111,7 +111,8 @@ const Inbox = () => {
       console.log("WebSocket connection closed, attempting to reconnect...");
       setTimeout(() => {
         if (!socketRef.current || socketRef.current.readyState === WebSocket.CLOSED) {
-          socketRef.current = new WebSocket(`ws://127.0.0.1:8000/ws/chat/${currentUsername}/`);
+          const token = localStorage.getItem("accessToken");
+          socketRef.current = new WebSocket(`ws://127.0.0.1:8000/ws/chat/${currentUsername}/?token=${token}`);
         }
       }, 3000);  // Reconnect after 3 seconds
     });    
@@ -186,42 +187,74 @@ const Inbox = () => {
     };
   
     try {
-      // Send message via HTTP API
-      const response = await axios.post("http://127.0.0.1:8000/inbox/send_message/", newMessage, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-        },
-      });
-      
-      // Add the sent message to our local state
-      const sentMessage: Message = {
-        id: response.data.id || Date.now(),
-        sender_username: currentUsername,
-        recipient_username: recipient,
-        subject,
-        body,
-        timestamp: new Date().toISOString()
-      };
-      
-      setMessages(prevMessages => [...prevMessages, sentMessage]);
-  
-      // Close the dialog
-      setIsDialogOpen(false);
-      setReplyTo(null);
-  
-      // Show success toast
-      toast({
-        title: "Message Sent",
-        description: "Your message was sent successfully.",
-        variant: "default",
-      });
-      
-      // Clear form
-      if (event.currentTarget) {
-        event.currentTarget.reset();
+      if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+        // Send message via WebSocket
+        socketRef.current.send(JSON.stringify({
+          message: body,
+          recipient: recipient,
+          subject: subject
+        }));
+        
+        // Add the sent message to our local state
+        const sentMessage: Message = {
+          id: Date.now(), // Temporary ID
+          sender_username: currentUsername,
+          recipient_username: recipient,
+          subject,
+          body,
+          timestamp: new Date().toISOString()
+        };
+        
+        setMessages(prevMessages => [...prevMessages, sentMessage]);
+        
+        // Close the dialog
+        setIsDialogOpen(false);
+        setReplyTo(null);
+        
+        // Show success toast
+        toast({
+          title: "Message Sent",
+          description: "Your message was sent successfully.",
+          variant: "default",
+        });
+        
+        // Clear form
+        if (event.currentTarget) {
+          event.currentTarget.reset();
+        }
+      } else {
+        // Fallback to HTTP if WebSocket is not available
+        const response = await axios.post("http://127.0.0.1:8000/inbox/send_message/", newMessage, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+          },
+        });
+        
+        // Same handling as before...
+        const sentMessage: Message = {
+          id: response.data.id || Date.now(),
+          sender_username: currentUsername,
+          recipient_username: recipient,
+          subject,
+          body,
+          timestamp: new Date().toISOString()
+        };
+        
+        setMessages(prevMessages => [...prevMessages, sentMessage]);
+        setIsDialogOpen(false);
+        setReplyTo(null);
+        
+        toast({
+          title: "Message Sent",
+          description: "Your message was sent successfully.",
+          variant: "default",
+        });
+        
+        if (event.currentTarget) {
+          event.currentTarget.reset();
+        }
       }
     } catch (error) {
-      // Show error toast
       toast({
         title: "Error",
         description: "Failed to send message. Please try again.",
