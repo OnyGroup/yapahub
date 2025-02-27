@@ -1,5 +1,3 @@
-# Create a new file: inbox/middleware.py
-
 from channels.middleware import BaseMiddleware
 from channels.db import database_sync_to_async
 from django.contrib.auth.models import AnonymousUser
@@ -7,6 +5,7 @@ from rest_framework_simplejwt.tokens import AccessToken
 from django.contrib.auth import get_user_model
 from jwt import decode as jwt_decode
 from jwt import InvalidTokenError
+import urllib.parse
 
 User = get_user_model()
 
@@ -23,12 +22,24 @@ def get_user(token_key):
 
 class JWTAuthMiddleware(BaseMiddleware):
     async def __call__(self, scope, receive, send):
-        # Get the token from the headers
+        # Try to get token from headers or query string
         headers = dict(scope['headers'])
-        authorization = headers.get(b'authorization', b'').decode('utf8')
+        query_string = scope.get('query_string', b'').decode('utf-8')
+        query_params = urllib.parse.parse_qs(query_string)
         
-        if authorization.startswith('Bearer '):
-            token = authorization.split(' ')[1]
+        token = None
+        
+        # Try to get token from headers
+        if b'authorization' in headers:
+            auth_header = headers[b'authorization'].decode('utf-8')
+            if auth_header.startswith('Bearer '):
+                token = auth_header.split(' ')[1]
+        
+        # If no token in headers, try query string
+        if not token and 'token' in query_params:
+            token = query_params['token'][0]
+            
+        if token:
             scope['user'] = await get_user(token)
         else:
             scope['user'] = AnonymousUser()
