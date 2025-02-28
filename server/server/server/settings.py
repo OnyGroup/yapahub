@@ -29,6 +29,13 @@ SECRET_KEY = 'django-insecure-c&qp#*6j^q4%)fv-j-h%yj+ac_wdz$_w&z23o^&owmd5f7(^o$
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
+# Africa's Talking API configuration
+AFRICASTALKING_USERNAME = 'sandbox'
+AFRICASTALKING_API_KEY = config('AFRICASTALKING_API_KEY')
+AFRICASTALKING_CALLER_ID = '+1234567890' 
+SIP_USERNAME = config("SIP_USERNAME")
+SIP_PASSWORD = config("SIP_PASSWORD")
+
 SENDGRID_API_KEY = config('SENDGRID_API_KEY')
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL')
 OPENAI_API_KEY = config("OPENAI_API_KEY")
@@ -73,6 +80,7 @@ INSTALLED_APPS = [
     'payments',
     'django_extensions',
     'channels',
+    'call_center',
 
     # third party apps
     'rest_framework',

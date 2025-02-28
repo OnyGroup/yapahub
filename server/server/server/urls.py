@@ -26,4 +26,5 @@ urlpatterns = [
     path('ndonga/', include('ndonga.urls')),
     path('store/', include('ecommerce.urls')),
     path('payments/', include('payments.urls')),
+    path('call-center/', include('call_center.urls')),
 ]
