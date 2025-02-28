@@ -19,7 +19,11 @@ class SIPClient:
         # Transport configuration
         tcfg = pj.TransportConfig()
         tcfg.port = 5060
-        self.ep.transportCreate(pj.PJSIP_TRANSPORT_UDP, tcfg)
+        self.ep.transportCreate(pj.TransportType.UDP, tcfg)
+
+        # Fix: Set Null Audio Device to prevent errors
+        self.ep.audDevManager.setNullDev()
+
         self.ep.libStart()
 
         # Account configuration

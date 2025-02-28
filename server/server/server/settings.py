@@ -32,7 +32,7 @@ DEBUG = True
 # Africa's Talking API configuration
 AFRICASTALKING_USERNAME = 'sandbox'
 AFRICASTALKING_API_KEY = config('AFRICASTALKING_API_KEY')
-AFRICASTALKING_CALLER_ID = '+1234567890' 
+AFRICASTALKING_CALLER_ID = "sip:test_KE.murithi.@sandbox.sip.africastalking.com"
 SIP_USERNAME = config("SIP_USERNAME")
 SIP_PASSWORD = config("SIP_PASSWORD")
 

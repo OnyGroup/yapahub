@@ -61,7 +61,6 @@ class CallbackURLSerializer(serializers.ModelSerializer):
 
 class MakeCallSerializer(serializers.Serializer):
     phone_number = serializers.CharField(max_length=20)
-    caller_id = serializers.IntegerField()
     use_sip = serializers.BooleanField(required=False, default=False)
 
 class CallStatusSerializer(serializers.Serializer):

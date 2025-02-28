@@ -1,4 +1,5 @@
 import africastalking
+import re
 from django.conf import settings
 from django.utils import timezone
 from django.contrib.auth import get_user_model
@@ -12,7 +13,6 @@ from .serializers import (
     MakeCallSerializer, CallStatusSerializer
 )
 from .sip_client import SIPClient
-import africastalking
 
 User = get_user_model()
 africastalking.initialize(settings.AFRICASTALKING_USERNAME, settings.AFRICASTALKING_API_KEY)
@@ -56,34 +56,39 @@ class CallbackURLViewSet(viewsets.ModelViewSet):
 
 class MakeCallView(APIView):
     permission_classes = [IsAuthenticated]
-    
+
     def post(self, request):
         serializer = MakeCallSerializer(data=request.data)
         if serializer.is_valid():
             phone_number = serializer.validated_data['phone_number']
-            caller_id = serializer.validated_data['caller_id']
-            use_sip = serializer.validated_data.get('use_sip', False)  # Optional flag for SIP calling
+            use_sip = serializer.validated_data.get('use_sip', False)  # Optional SIP flag
+
+            # Validate phone number format
+            if not re.match(r'^\+\d{10,15}$', phone_number):
+                return Response(
+                    {"error": "Invalid phone number format. Use E.164 format like +254700123456"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
             try:
-                # Get the first active callback URL
+                # Get active callback URL
                 callback_url = CallbackURL.objects.filter(is_active=True).first()
                 if not callback_url:
                     return Response(
-                        {"error": "No active callback URL configured"}, 
+                        {"error": "No active callback URL configured"},
                         status=status.HTTP_400_BAD_REQUEST
                     )
 
-                # Check if SIP calling is requested
+                # **SIP CALL LOGIC**
                 if use_sip:
                     try:
                         sip_client = SIPClient()
                         sip_client.make_call(phone_number)
 
                         call_log = CallLog.objects.create(
-                            session_id="SIP-" + str(caller_id),
-                            caller_id=caller_id,
+                            session_id=f"SIP-{phone_number}",
                             phone_number=phone_number,
-                            status='initiated_sip'
+                            status="initiated_sip"
                         )
 
                         return Response({
@@ -93,47 +98,38 @@ class MakeCallView(APIView):
                         }, status=status.HTTP_201_CREATED)
 
                     except Exception as e:
-                        return Response(
-                            {"error": f"SIP call failed: {str(e)}"}, 
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-                        )
+                        return Response({"error": f"SIP call failed: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-                # If use_sip is False, proceed with Africa's Talking API
-                response = voice.call({
-                    'to': phone_number,
-                    'from': settings.AFRICASTALKING_CALLER_ID,
-                    'clientRequestId': str(caller_id),
-                    'enqueue': True
-                })
-
+                # **AFRICA'S TALKING CALL LOGIC**
                 try:
-                    caller = User.objects.get(id=caller_id)
-                    call_log = CallLog.objects.create(
-                        session_id=response['entries'][0]['sessionId'],
-                        caller=caller,
-                        phone_number=phone_number,
-                        status='queued'
+                    print(f"Making call with: {phone_number}")  # Debugging
+                    response = africastalking.Voice.call(
+                        callFrom=settings.AFRICASTALKING_CALLER_ID,  
+                        callTo=phone_number
                     )
+                    print(f"API Response: {response}")  # Debugging
+                except Exception as e:
+                    print(f"Error making call: {str(e)}")
+                    return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-                    return Response({
-                        "message": "Call initiated successfully via Africa's Talking",
-                        "call_id": call_log.id,
-                        "session_id": call_log.session_id
-                    }, status=status.HTTP_201_CREATED)
-
-                except User.DoesNotExist:
-                    return Response(
-                        {"error": "Caller not found"}, 
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
-
-            except Exception as e:
-                return Response(
-                    {"error": str(e)}, 
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                # **LOG CALL**
+                call_log = CallLog.objects.create(
+                    session_id=response['entries'][0]['sessionId'],
+                    phone_number=phone_number,
+                    status="queued"
                 )
 
+                return Response({
+                    "message": "Call initiated successfully via Africa's Talking",
+                    "call_id": call_log.id,
+                    "session_id": call_log.session_id
+                }, status=status.HTTP_201_CREATED)
+
+            except Exception as e:
+                return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class CallStatusWebhook(APIView):
     """Webhook to receive call status updates from Africa's Talking"""
