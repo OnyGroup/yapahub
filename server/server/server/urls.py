@@ -27,4 +27,5 @@ urlpatterns = [
     path('store/', include('ecommerce.urls')),
     path('payments/', include('payments.urls')),
     path('call-center/', include('call_center.urls')),
+    path('pipeline/', include('cx_pipeline.urls')),
 ]

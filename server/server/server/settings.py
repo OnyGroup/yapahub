@@ -81,6 +81,7 @@ INSTALLED_APPS = [
     'django_extensions',
     'channels',
     'call_center',
+    'cx_pipeline',
 
     # third party apps
     'rest_framework',

@@ -15,6 +15,7 @@ class CxClient(models.Model):
     company_name = models.CharField(max_length=255, blank=True, null=True)
     industry = models.CharField(max_length=255, blank=True, null=True)
     account_manager = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="clients")
+    created_at = models.DateTimeField(auto_now_add=True) 
 
     def __str__(self):
         return self.name
