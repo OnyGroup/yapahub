@@ -16,10 +16,12 @@ class RegisterView(APIView):
         username = request.data.get("username")
         password = request.data.get("password")
         email = request.data.get("email")
+        first_name = request.data.get("first_name")
+        last_name = request.data.get("last_name")
         access_level = request.data.get("access_level")  # This field specifies the user's role
         phone_number = request.data.get("phone_number", None) 
 
-        if not username or not password or not email or not access_level:
+        if not username or not password or not email or not access_level or not first_name or not last_name:
             return Response({"error": "All fields except phone number are required"}, status=status.HTTP_400_BAD_REQUEST)
 
         if User.objects.filter(username=username).exists():
@@ -31,7 +33,13 @@ class RegisterView(APIView):
         # if phone_number and UserProfile.objects.filter(phone_number=phone_number).exists():
         #     return Response({"error": "Phone number already registered"}, status=status.HTTP_400_BAD_REQUEST)
 
-        user = User.objects.create_user(username=username, password=password, email=email)
+        user = User.objects.create_user(
+            username=username,
+            password=password,
+            email=email,
+            first_name=first_name,
+            last_name=last_name 
+        )
 
         # Assigning the user to the appropriate group based on access_level
         try: 
@@ -147,3 +155,11 @@ class CxClientRetrieveUpdateDestroyView(RetrieveUpdateDestroyAPIView):
             return Response({"error": "Only admins can change the account manager."}, status=status.HTTP_403_FORBIDDEN)
 
         serializer.save()
+
+class AccountManagersView(APIView):
+    def get(self, request):
+        managers_group = Group.objects.get(name="Account Managers")
+        managers = User.objects.filter(groups=managers_group)
+        return Response([
+            {"id": manager.id, "full_name": f"{manager.first_name} {manager.last_name}"} for manager in managers
+        ])
