@@ -1,3 +1,4 @@
+from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -5,7 +6,8 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.contrib.auth.models import Group, User
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import UserProfile
+from .models import UserProfile, CxClient
+from .serializers import CxClientSerializer
 
 class RegisterView(APIView):
     permission_classes = [AllowAny]
@@ -32,20 +34,26 @@ class RegisterView(APIView):
         user = User.objects.create_user(username=username, password=password, email=email)
 
         # Assigning the user to the appropriate group based on access_level
-        if access_level == "admin":
-            group = Group.objects.get(name="Admins")
-            user.is_staff = True
-            user.is_superuser = True
-        elif access_level == "business_owner":
-            group = Group.objects.get(name="Business Owners")
-        elif access_level == "agent":
-            group = Group.objects.get(name="Agents")
-        elif access_level == "customer":
-            group = Group.objects.get(name="Customers")
-        else:
-            return Response({"error": "Invalid access level"}, status=status.HTTP_400_BAD_REQUEST)
+        try: 
+            if access_level == "admin":
+                group = Group.objects.get(name="Admins")
+                user.is_staff = True
+                user.is_superuser = True
+            elif access_level == "business_owner":
+                group = Group.objects.get(name="Business Owners")
+            elif access_level == "agent":
+                group = Group.objects.get(name="Agents")
+            elif access_level == "customer":
+                group = Group.objects.get(name="Customers")
+            elif access_level == "account_manager":
+                group = Group.objects.get(name="Account Managers")
+            else:
+                return Response({"error": "Invalid access level"}, status=status.HTTP_400_BAD_REQUEST)
 
-        user.groups.add(group)
+            user.groups.add(group)
+        except Group.DoesNotExist:
+            return Response({"error": "Role does not exist, please run migrations"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
         # Ensure UserProfile is created before assigning phone_number
         profile, created = UserProfile.objects.get_or_create(user=user)
@@ -116,3 +124,26 @@ class CurrentUserView(APIView):
             "phone_number": phone_number
         }, status=status.HTTP_200_OK)
 
+class CxClientListCreateView(ListCreateAPIView):
+    permission_classes = [IsAuthenticated]
+    queryset = CxClient.objects.all()
+    serializer_class = CxClientSerializer
+
+    def perform_create(self, serializer):
+        # Only admins can set an account manager
+        if not self.request.user.is_staff:
+            return Response({"error": "Only admins can assign an account manager."}, status=status.HTTP_403_FORBIDDEN)
+        
+        serializer.save()
+
+class CxClientRetrieveUpdateDestroyView(RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAuthenticated]
+    queryset = CxClient.objects.all()
+    serializer_class = CxClientSerializer
+
+    def perform_update(self, serializer):
+        # Restrict normal users from changing the account manager
+        if not self.request.user.is_staff:
+            return Response({"error": "Only admins can change the account manager."}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer.save()
