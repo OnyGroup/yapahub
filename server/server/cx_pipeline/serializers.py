@@ -1,14 +1,10 @@
 from rest_framework import serializers
-from .models import CxPipeline, PipelineStage
-
-class PipelineStageSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = PipelineStage
-        fields = '__all__'
+from .models import CxPipeline
 
 class CxPipelineSerializer(serializers.ModelSerializer):
     client_name = serializers.ReadOnlyField(source="client.name")
     account_manager_name = serializers.SerializerMethodField()
+    status_display = serializers.SerializerMethodField()  # Human-readable status
 
     class Meta:
         model = CxPipeline
@@ -19,3 +15,6 @@ class CxPipelineSerializer(serializers.ModelSerializer):
             full_name = f"{obj.account_manager.first_name} {obj.account_manager.last_name}".strip()
             return full_name if full_name else obj.account_manager.username  # Fallback if names are empty
         return None
+
+    def get_status_display(self, obj):
+        return obj.get_status_display()  # Returns "Lead/Prospect", "Negotiation", etc.
