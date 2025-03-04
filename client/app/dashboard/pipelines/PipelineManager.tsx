@@ -55,6 +55,7 @@ export default function PipelineManager() {
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<string>("All");
   const { toast } = useToast();
+  const [openAlertDialog, setOpenAlertDialog] = useState(false);
 
   useEffect(() => {
     fetchPipelines();
@@ -269,9 +270,17 @@ export default function PipelineManager() {
                     >
                       Edit
                     </DropdownMenuItem>
-                    <AlertDialog>
+                    {/* Update the AlertDialog component */}
+                    <AlertDialog open={openAlertDialog} onOpenChange={setOpenAlertDialog}>
                       <AlertDialogTrigger asChild>
-                        <DropdownMenuItem className="text-red-500">Delete</DropdownMenuItem>
+                        <DropdownMenuItem className="text-red-500"
+                          onSelect={(e) => {
+                            e.preventDefault(); // Prevent default behavior
+                            setOpenAlertDialog(true); // Open the dialog
+                          }}
+                        >
+                          Delete
+                        </DropdownMenuItem>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
@@ -281,8 +290,15 @@ export default function PipelineManager() {
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDelete(pipeline.id)}>Delete</AlertDialogAction>
+                          <AlertDialogCancel onClick={() => setOpenAlertDialog(false)}>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={async () => {
+                              await handleDelete(pipeline.id); // Call the delete function
+                              setOpenAlertDialog(false); // Close the dialog after deletion
+                            }}
+                          >
+                            Delete
+                          </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
