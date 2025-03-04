@@ -5,6 +5,7 @@ class CxPipelineSerializer(serializers.ModelSerializer):
     client_name = serializers.ReadOnlyField(source="client.name")
     account_manager_name = serializers.SerializerMethodField()
     status_display = serializers.SerializerMethodField()  # Human-readable status
+    notes = serializers.CharField(allow_blank=True, required=False, max_length=2000)
 
     class Meta:
         model = CxPipeline

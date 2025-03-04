@@ -11,12 +11,14 @@ import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader,
 import { useToast } from "@/hooks/use-toast";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { MoreVertical } from "lucide-react";
+import NotesManager from "./NotesManager";
 
 interface Pipeline {
   id: number;
   client_name: string;
   status: number;
   last_updated: string;
+  notes: string;
 }
 
 // Status mappings
@@ -195,6 +197,7 @@ export default function PipelineManager() {
             <TableHead>Client</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Last Updated</TableHead>
+            <TableHead>Notes</TableHead>
             <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -206,6 +209,9 @@ export default function PipelineManager() {
                 <Badge className={statusColors[pipeline.status]}>{statusLabels[pipeline.status]}</Badge>
               </TableCell>
               <TableCell>{new Date(pipeline.last_updated).toLocaleDateString()}</TableCell>
+              <TableCell>
+                <NotesManager pipelineId={pipeline.id} initialNotes={pipeline.notes || ""} />
+              </TableCell>
               <TableCell className="text-right">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
