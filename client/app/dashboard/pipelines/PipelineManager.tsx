@@ -181,6 +181,7 @@ export default function PipelineManager() {
         title: "Success",
         description: "Pipeline deleted successfully",
       });
+      setOpenAlertDialog(false);
       fetchPipelines();
     } catch (error) {
       console.error("Error deleting pipeline:", error);
