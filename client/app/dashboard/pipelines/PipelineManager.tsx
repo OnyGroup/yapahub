@@ -19,6 +19,12 @@ interface Pipeline {
   status: number;
   last_updated: string;
   notes: string;
+  client: number;
+}
+
+interface Client {
+  id: number;
+  name: string;
 }
 
 // Status mappings
@@ -40,9 +46,10 @@ const statusColors: Record<number, string> = {
 
 export default function PipelineManager() {
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
-  const [newClientName, setNewClientName] = useState("");
+  const [clients, setClients] = useState<Client[]>([]);
   const [newStatus, setNewStatus] = useState<number>(1);
   const [newNotes, setNewNotes] = useState("");
+  const [selectedClientId, setSelectedClientId] = useState<number | null>(null); // Selected client ID
   const [editingPipeline, setEditingPipeline] = useState<Pipeline | null>(null);
   const [loading, setLoading] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
@@ -51,6 +58,7 @@ export default function PipelineManager() {
 
   useEffect(() => {
     fetchPipelines();
+    fetchClients();
   }, []);
 
   const fetchPipelines = async () => {
@@ -82,6 +90,32 @@ export default function PipelineManager() {
     }
   };
 
+  const fetchClients = async () => {
+    const token = localStorage.getItem("accessToken");
+
+    try {
+      const response = await fetch("http://127.0.0.1:8000/auth/clients/", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) throw new Error("Failed to fetch clients");
+
+      const data = await response.json();
+      setClients(data);
+    } catch (error) {
+      console.error("Error fetching clients:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to load clients",
+      });
+    }
+  };
+
   const handleCreateOrUpdate = async () => {
     const token = localStorage.getItem("accessToken");
     const url = editingPipeline
@@ -90,7 +124,7 @@ export default function PipelineManager() {
 
     const method = editingPipeline ? "PATCH" : "POST";
     const body = JSON.stringify({
-      client_name: newClientName,
+      client: selectedClientId, // Use the selected client ID
       status: newStatus,
       notes: newNotes,
     });
@@ -112,8 +146,9 @@ export default function PipelineManager() {
         title: "Success",
         description: `Pipeline ${editingPipeline ? "updated" : "created"} successfully`,
       });
-      setNewClientName("");
+      setSelectedClientId(null); // Reset selected client
       setNewStatus(1);
+      setNewNotes("");
       setEditingPipeline(null);
       setOpenDialog(false);
       fetchPipelines();
@@ -168,8 +203,9 @@ export default function PipelineManager() {
         <Button
           onClick={() => {
             setEditingPipeline(null); // Reset form for new entry
-            setNewClientName("");
+            setSelectedClientId(null);
             setNewStatus(1);
+            setNewNotes("");
             setOpenDialog(true);
           }}
         >
@@ -225,7 +261,7 @@ export default function PipelineManager() {
                     <DropdownMenuItem
                       onClick={() => {
                         setEditingPipeline(pipeline);
-                        setNewClientName(pipeline.client_name);
+                        setSelectedClientId(Number(pipeline.client)); // Pre-fill client
                         setNewStatus(pipeline.status);
                         setNewNotes(pipeline.notes || "");
                         setOpenDialog(true);
@@ -263,12 +299,22 @@ export default function PipelineManager() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{editingPipeline ? "Edit Pipeline" : "Add Pipeline"}</DialogTitle>
-          </DialogHeader>
-          <Input
-            placeholder="Client Name"
-            value={newClientName}
-            onChange={(e) => setNewClientName(e.target.value)}
-          />
+            </DialogHeader>
+          <Select
+            value={selectedClientId?.toString()}
+            onValueChange={(value) => setSelectedClientId(Number(value))}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select Client" />
+            </SelectTrigger>
+            <SelectContent>
+              {clients.map((client) => (
+                <SelectItem key={client.id} value={client.id.toString()}>
+                  {client.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Select value={newStatus.toString()} onValueChange={(value) => setNewStatus(Number(value))}>
             <SelectTrigger>
               <SelectValue placeholder="Select Status" />
