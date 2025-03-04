@@ -42,6 +42,7 @@ export default function PipelineManager() {
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
   const [newClientName, setNewClientName] = useState("");
   const [newStatus, setNewStatus] = useState<number>(1);
+  const [newNotes, setNewNotes] = useState("");
   const [editingPipeline, setEditingPipeline] = useState<Pipeline | null>(null);
   const [loading, setLoading] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
@@ -91,6 +92,7 @@ export default function PipelineManager() {
     const body = JSON.stringify({
       client_name: newClientName,
       status: newStatus,
+      notes: newNotes,
     });
 
     try {
@@ -225,6 +227,7 @@ export default function PipelineManager() {
                         setEditingPipeline(pipeline);
                         setNewClientName(pipeline.client_name);
                         setNewStatus(pipeline.status);
+                        setNewNotes(pipeline.notes || "");
                         setOpenDialog(true);
                       }}
                     >
@@ -278,6 +281,11 @@ export default function PipelineManager() {
               ))}
             </SelectContent>
           </Select>
+          <Input
+            placeholder="Add Notes"
+            value={newNotes}
+            onChange={(e) => setNewNotes(e.target.value)}
+          />
           <Button onClick={handleCreateOrUpdate}>{editingPipeline ? "Update" : "Create"}</Button>
         </DialogContent>
       </Dialog>
