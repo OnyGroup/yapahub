@@ -69,7 +69,7 @@ const ClientTable = () => {
   );
 
   return (
-    <Card className="shadow-lg border rounded-2xl p-6 bg-white">
+    <Card className="w-full shadow-lg border rounded-2xl p-6 bg-white">
       <CardHeader>
         <CardTitle className="text-xl font-semibold text-gray-900">Manage Clients</CardTitle>
       </CardHeader>
@@ -78,9 +78,10 @@ const ClientTable = () => {
           placeholder="Search clients..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="mb-4"
+          className="mb-4 w-full"
         />
-        <Table>
+        <div className="overflow-x-auto">
+          <Table className="w-full">
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
@@ -111,6 +112,7 @@ const ClientTable = () => {
             ))}
           </TableBody>
         </Table>
+        </div>
       </CardContent>
     </Card>
   );
