@@ -8,6 +8,7 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Trash2, Pencil } from "lucide-react";
+import EditClientForm from "./EditClientForm";
 
 interface Client {
   id: number;
@@ -22,6 +23,8 @@ interface Client {
 const ClientTable = () => {
   const [clients, setClients] = useState<Client[]>([]);
   const [search, setSearch] = useState("");
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -63,6 +66,11 @@ const ClientTable = () => {
     }
   };
 
+  const handleEditClick = (client: Client) => {
+    setSelectedClient(client);
+    setIsEditing(true);
+  };
+
   const filteredClients = clients.filter(client =>
     client.name.toLowerCase().includes(search.toLowerCase()) ||
     client.company_name.toLowerCase().includes(search.toLowerCase())
@@ -101,7 +109,7 @@ const ClientTable = () => {
                 <TableCell>{client.company_name}</TableCell>
                 <TableCell>{client.industry}</TableCell>
                 <TableCell className="flex space-x-2">
-                  <Button size="icon" variant="outline" onClick={() => alert("Edit client")}>
+                <Button size="icon" variant="outline" onClick={() => handleEditClick(client)}>
                     <Pencil className="w-4 h-4" />
                   </Button>
                   <Button size="icon" variant="destructive" onClick={() => handleDelete(client.id)}>
@@ -114,6 +122,7 @@ const ClientTable = () => {
         </Table>
         </div>
       </CardContent>
+      <EditClientForm client={selectedClient} isOpen={isEditing} onClose={() => setIsEditing(false)} onUpdate={fetchClients} />
     </Card>
   );
 };
