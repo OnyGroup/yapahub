@@ -30,11 +30,18 @@ const ClientForm = ({ accountManagers }: { accountManagers: {
   const {
     register,
     handleSubmit,
+    setValue, 
     formState: { errors },
     reset,
   } = useForm<ClientFormData>({
     resolver: zodResolver(clientSchema),
   });
+  
+  // Handle Select Change
+  const handleAccountManagerChange = (value: string) => {
+    setValue("account_manager", value); // Manually setting the value
+  };
+  
 
   const { toast } = useToast();
 
@@ -118,7 +125,7 @@ const ClientForm = ({ accountManagers }: { accountManagers: {
 
           <div>
             <Label>Account Manager</Label>
-            <Select {...register("account_manager")}>
+            <Select onValueChange={handleAccountManagerChange}>
               <SelectTrigger>
                 <SelectValue placeholder="Select an account manager" />
               </SelectTrigger>
