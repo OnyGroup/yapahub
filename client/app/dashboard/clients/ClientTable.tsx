@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Trash2, Pencil } from "lucide-react";
 import EditClientForm from "./EditClientForm";
@@ -25,6 +26,8 @@ const ClientTable = () => {
   const [search, setSearch] = useState("");
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -48,22 +51,30 @@ const ClientTable = () => {
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async () => {
+    if (!clientToDelete) return;
+
     try {
       const accessToken = localStorage.getItem("accessToken");
       if (!accessToken) {
         throw new Error("Unauthorized: No access token found.");
       }
-      await axios.delete(`http://127.0.0.1:8000/auth/clients/${id}/`, {
+      await axios.delete(`http://127.0.0.1:8000/auth/clients/${clientToDelete.id}/`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
       });
-      setClients(clients.filter(client => client.id !== id));
+      setClients(clients.filter(client => client.id !== clientToDelete.id));
       toast({ title: "Client deleted", description: "The client has been removed." });
+      setIsDeleteDialogOpen(false);
     } catch (error) {
       console.error("Error deleting client:", error);
     }
+  };
+
+  const handleDeleteClick = (client: Client) => {
+    setClientToDelete(client);
+    setIsDeleteDialogOpen(true);
   };
 
   const handleEditClick = (client: Client) => {
@@ -112,7 +123,7 @@ const ClientTable = () => {
                 <Button size="icon" variant="outline" onClick={() => handleEditClick(client)}>
                     <Pencil className="w-4 h-4" />
                   </Button>
-                  <Button size="icon" variant="destructive" onClick={() => handleDelete(client.id)}>
+                  <Button size="icon" variant="destructive" onClick={() => handleDeleteClick(client)}>
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 </TableCell>
@@ -123,6 +134,20 @@ const ClientTable = () => {
         </div>
       </CardContent>
       <EditClientForm client={selectedClient} isOpen={isEditing} onClose={() => setIsEditing(false)} onUpdate={fetchClients} />
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirm Delete</DialogTitle>
+          </DialogHeader>
+          <p>Are you sure you want to delete <strong>{clientToDelete?.name}</strong>? This action cannot be undone.</p>
+          <DialogFooter className="flex justify-end space-x-2">
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDelete}>Delete</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };
