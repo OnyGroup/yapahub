@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
-import { MoreVertical } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import NotesManager from "./NotesManager";
 
 interface Pipeline {
@@ -252,16 +252,11 @@ export default function PipelineManager() {
               <TableCell>
                 <NotesManager pipelineId={pipeline.id} initialNotes={pipeline.notes || ""} />
               </TableCell>
-              <TableCell className="text-right">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <MoreVertical className="h-5 w-5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onClick={() => {
+                <TableCell className="text-right flex gap-2 justify-end">
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={() => {
                         setEditingPipeline(pipeline);
                         setSelectedClientId(Number(pipeline.client)); // Pre-fill client
                         setNewStatus(pipeline.status);
@@ -269,19 +264,22 @@ export default function PipelineManager() {
                         setOpenDialog(true);
                       }}
                     >
-                      Edit
-                    </DropdownMenuItem>
+                      <Pencil className="h-5 w-5" />
+                    </Button>
                     {/* Update the AlertDialog component */}
                     <AlertDialog open={openAlertDialog} onOpenChange={setOpenAlertDialog}>
                       <AlertDialogTrigger asChild>
-                        <DropdownMenuItem className="text-red-500"
-                          onSelect={(e) => {
-                            e.preventDefault(); // Prevent default behavior
-                            setOpenAlertDialog(true); // Open the dialog
-                          }}
-                        >
-                          Delete
-                        </DropdownMenuItem>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="text-red-500"
+                        onClick={(e) => {
+                          e.stopPropagation(); // Prevent event bubbling
+                          setOpenAlertDialog(true); // Open the dialog
+                        }}
+                      >
+                        <Trash2 className="h-5 w-5" />
+                      </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
@@ -303,8 +301,6 @@ export default function PipelineManager() {
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
-                  </DropdownMenuContent>
-                </DropdownMenu>
               </TableCell>
             </TableRow>
           ))}
