@@ -2,13 +2,14 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { LayoutDashboard, MessagesSquare, Sparkles, Phone, Megaphone, Users, UserCheck, GitBranch, Cog, BarChart3, ChevronLeft, ChevronRight, Package } from "lucide-react"
+import { LayoutDashboard, MessagesSquare, Sparkles, Phone, Megaphone, Users, UserCheck, BriefcaseBusiness, GitBranch, Cog, BarChart3, ChevronLeft, ChevronRight, Package } from "lucide-react"
 
 const menuItems = [
   { icon: LayoutDashboard, text: "Dashboard", href: "/dashboard" },
   { icon: Sparkles, text: "Ndonga", href: "/dashboard/ndonga" },
   { icon: Users, text: "Customers", href: "/dashboard/customers" },
   { icon: UserCheck, text: "Add Client", href: "/dashboard/clients" },
+  { icon: BriefcaseBusiness, text: "Account Managers", href: "/dashboard/account-managers" },
   { icon: GitBranch, text: "Pipelines", href: "/dashboard/pipelines" },
   { icon: MessagesSquare, text: "Inbox", href: "/dashboard/inbox" },
   { icon: BarChart3, text: "Analytics", href: "/dashboard/analytics" },
