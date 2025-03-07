@@ -11,7 +11,9 @@ def create_user_profile(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender=User)
 def save_user_profile(sender, instance, **kwargs):
-    instance.profile.save()
+    if hasattr(instance, "profile") and instance.profile.phone_number:  # Ensure phone number is set
+        instance.profile.save()
+
 
 @receiver(post_migrate)
 def create_default_groups(sender, **kwargs):

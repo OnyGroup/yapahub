@@ -21,6 +21,10 @@ class RegisterView(APIView):
         access_level = request.data.get("access_level")  # This field specifies the user's role
         phone_number = request.data.get("phone_number", None) 
 
+        # Check if phone_number is empty or None
+        if not phone_number:
+            print("Phone number is empty or None")
+
         if not username or not password or not email or not access_level or not first_name or not last_name:
             return Response({"error": "All fields except phone number are required"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -67,7 +71,6 @@ class RegisterView(APIView):
         profile, created = UserProfile.objects.get_or_create(user=user)
         profile.phone_number = phone_number
         profile.save()
-
         user.save()
 
         return Response({"message": f"{access_level.capitalize()} registered successfully"}, status=status.HTTP_201_CREATED)
@@ -161,5 +164,11 @@ class AccountManagersView(APIView):
         managers_group = Group.objects.get(name="Account Managers")
         managers = User.objects.filter(groups=managers_group)
         return Response([
-            {"id": manager.id, "full_name": f"{manager.first_name} {manager.last_name}"} for manager in managers
-        ])
+    {
+        "id": manager.id,
+        "full_name": f"{manager.first_name} {manager.last_name}",
+        "email": manager.email,
+        "phone_number": manager.profile.phone_number if hasattr(manager, "profile") else None
+    } 
+    for manager in managers
+])
