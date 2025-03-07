@@ -185,11 +185,15 @@ class AccountManagerRetrieveUpdateDestroyView(APIView):
                 return Response({"error": "User is not an Account Manager"}, status=status.HTTP_400_BAD_REQUEST)
 
             data = request.data
-            allowed_fields = ["first_name", "last_name", "email"]
+            allowed_fields = ["first_name", "last_name", "email", "username"]
 
             # Update User fields
             for field in allowed_fields:
                 if field in data:
+                    if field == "username":
+                        # Ensure the new username is unique
+                        if User.objects.filter(username=data["username"]).exclude(pk=user.pk).exists():
+                            return Response({"error": "Username already taken"}, status=status.HTTP_400_BAD_REQUEST)
                     setattr(user, field, data[field])
 
             # Update phone number in UserProfile

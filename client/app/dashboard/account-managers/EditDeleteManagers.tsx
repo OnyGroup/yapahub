@@ -31,6 +31,10 @@ export default function EditDeleteAccountManager({ manager, onManagerUpdated, on
   const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
+    setUpdatedManager({ ...manager });
+  }, [manager]);
+
+  useEffect(() => {
     if (typeof window !== "undefined") {
       setToken(localStorage.getItem("accessToken"));
     }
@@ -114,6 +118,11 @@ export default function EditDeleteAccountManager({ manager, onManagerUpdated, on
           placeholder="Email"
           value={updatedManager.email || ""}
           onChange={(e) => setUpdatedManager({ ...updatedManager, email: e.target.value })}
+        />
+        <Input
+          placeholder="Username"
+          value={updatedManager.username || ""}
+          onChange={(e) => setUpdatedManager({ ...updatedManager, username: e.target.value })}
         />
         <Input
           placeholder="Phone Number"
