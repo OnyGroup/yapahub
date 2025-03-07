@@ -69,6 +69,7 @@ export default function AccountManagerDashboard() {
       const response = await fetch("http://127.0.0.1:8000/auth/account-managers/", { headers });
       if (!response.ok) throw new Error(`Failed to fetch. Status: ${response.status}`);
       const data = await response.json();
+      console.log("Account managers data:", data);
       setAccountManagers(data);
     } catch (error) {
       console.error("Error fetching account managers:", error);
@@ -122,52 +123,62 @@ export default function AccountManagerDashboard() {
   };
   
 
-  const createAccountManager = async () => {
-    if (!newManager.username || !newManager.password || !newManager.email || !newManager.first_name || !newManager.last_name || !newManager.phone_number) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "All fields are required",
-      });
-      return;
-    }
+// Modified createAccountManager function
+const createAccountManager = async () => {
+  if (!newManager.username || !newManager.password || !newManager.email || !newManager.first_name || !newManager.last_name || !newManager.phone_number) {
+    toast({
+      variant: "destructive",
+      title: "Error",
+      description: "All fields are required",
+    });
+    return;
+  }
 
-    const payload = {
-      first_name: newManager.first_name,
-      last_name: newManager.last_name,
-      email: newManager.email,
-      username: newManager.username,
-      phone_number: newManager.phone_number,
-      password: newManager.password,
-      access_level: "account_manager",
-    };
-
-    try {
-      const response = await fetch("http://127.0.0.1:8000/auth/register/", {
-        method: "POST",
-        headers: headers,
-        body: JSON.stringify(payload),
-      });
-  
-      if (!response.ok) throw new Error(`Failed to create manager. Status: ${response.status}`);
-  
-      toast({
-        variant: "default",
-        title: "Success",
-        description: "Account Manager added",
-      });
-  
-      fetchAccountManagers();
-      setIsDialogOpen(false); // Close dialog after success
-      setNewManager({ first_name: "", last_name: "", email: "", username: "", phone_number: "", password: "" }); // Clear form
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Error creating manager",
-      });
-    }
+  const payload = {
+    first_name: newManager.first_name,
+    last_name: newManager.last_name,
+    email: newManager.email,
+    username: newManager.username,
+    phone_number: newManager.phone_number,
+    password: newManager.password,
+    access_level: "account_manager",
   };
+
+  try {
+    const registerHeaders = {
+      "Content-Type": "application/json",
+    };
+    
+    const response = await fetch("http://127.0.0.1:8000/auth/register/", {
+      method: "POST",
+      headers: registerHeaders,  // Use headers without Authorization
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || `Failed to create manager. Status: ${response.status}`);
+    }
+
+    toast({
+      variant: "default",
+      title: "Success",
+      description: "Account Manager added",
+    });
+
+    fetchAccountManagers();
+    setIsDialogOpen(false);
+    setNewManager({ first_name: "", last_name: "", email: "", username: "", phone_number: "", password: "" });
+  } catch (error) {
+    // Cast error to any or Error type
+    const typedError = error as Error;
+    toast({
+      variant: "destructive",
+      title: "Error",
+      description: typedError.message || "Error creating manager",
+    });
+  }
+};
   
 
   return (
