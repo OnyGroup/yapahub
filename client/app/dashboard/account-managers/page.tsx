@@ -13,6 +13,12 @@ interface AccountManager {
   id: number;
   full_name: string;
   email: string;
+  username: string;
+  phone_number: string;
+  access_level: string;
+  password: string;
+  first_name: string;
+  last_name: string;
 }
 
 interface Client {
@@ -93,23 +99,37 @@ export default function AccountManagerDashboard() {
   };
 
   const createAccountManager = async () => {
-    if (!newManager.full_name || !newManager.email) {
+    if (!newManager.username || !newManager.password || !newManager.email || !newManager.first_name || !newManager.last_name || !newManager.phone_number) {
       toast.error("All fields are required");
       return;
     }
+  
+    const payload = {
+      first_name: newManager.first_name,
+      last_name: newManager.last_name,
+      email: newManager.email,
+      username: newManager.username,
+      phone_number: newManager.phone_number,
+      password: newManager.password,
+      access_level: "account_manager",      
+    };
+  
     try {
-      const response = await fetch("http://127.0.0.1:8000/auth/account-managers/", {
+      const response = await fetch("http://127.0.0.1:8000/auth/register/", {
         method: "POST",
         headers: headers,
-        body: JSON.stringify(newManager),
+        body: JSON.stringify(payload),
       });
+  
       if (!response.ok) throw new Error(`Failed to create manager. Status: ${response.status}`);
+  
       toast.success("Account Manager added");
       fetchAccountManagers();
     } catch (error) {
       toast.error("Error creating manager");
     }
   };
+  
 
   return (
     <div className="p-6 space-y-6">
@@ -125,8 +145,12 @@ export default function AccountManagerDashboard() {
           <DialogHeader>
             <DialogTitle>Create Account Manager</DialogTitle>
           </DialogHeader>
-          <Input placeholder="Full Name" onChange={(e) => setNewManager({ ...newManager, full_name: e.target.value })} />
+          <Input placeholder="First Name" onChange={(e) => setNewManager({ ...newManager, first_name: e.target.value })} />
+          <Input placeholder="Last Name" onChange={(e) => setNewManager({ ...newManager, last_name: e.target.value })} />
           <Input placeholder="Email" onChange={(e) => setNewManager({ ...newManager, email: e.target.value })} />
+          <Input placeholder="Username" onChange={(e) => setNewManager({ ...newManager, username: e.target.value })} />
+          <Input placeholder="Phone Number" onChange={(e) => setNewManager({ ...newManager, phone_number: e.target.value })} />
+          <Input type="password" placeholder="Password" onChange={(e) => setNewManager({ ...newManager, password: e.target.value })} />
           <Button onClick={createAccountManager}>Create</Button>
         </DialogContent>
       </Dialog>
