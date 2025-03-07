@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { toast } from "react-hot-toast";
+import { useToast } from "@/hooks/use-toast";
 
 interface AccountManager {
   id: number;
@@ -30,12 +30,21 @@ interface Client {
 }
 
 export default function AccountManagerDashboard() {
+  const { toast } = useToast();
   const [accountManagers, setAccountManagers] = useState<AccountManager[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedManager, setSelectedManager] = useState<number | "">("");
-  const [newManager, setNewManager] = useState<Partial<AccountManager>>({ full_name: "", email: "" });
+  const [newManager, setNewManager] = useState<Partial<AccountManager>>({
+    first_name: "",
+    last_name: "",
+    email: "",
+    username: "",
+    phone_number: "",
+    password: "",
+  });
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [token, setToken] = useState<string | null>(null); // Store token in state
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -48,7 +57,7 @@ export default function AccountManagerDashboard() {
       fetchAccountManagers();
       fetchClients();
     }
-  }, [token]); // Only fetch data when the token is available
+  }, [token]);
 
   const headers = {
     "Content-Type": "application/json",
@@ -79,31 +88,50 @@ export default function AccountManagerDashboard() {
 
   const assignManager = async (clientId: number) => {
     if (!selectedManager) {
-      toast.error("Please select an account manager");
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please select an account manager",
+      });
       return;
     }
+  
     try {
       const response = await fetch(`http://127.0.0.1:8000/auth/clients/${clientId}/`, {
         method: "PATCH",
         headers: headers,
         body: JSON.stringify({ account_manager: selectedManager }),
       });
-
+  
       if (!response.ok) throw new Error(`Failed to update. Status: ${response.status}`);
-
-      toast.success("Account Manager updated");
+  
+      toast({
+        variant: "default",
+        title: "Success",
+        description: "Account Manager updated",
+      });
+  
       fetchClients();
     } catch (error) {
-      toast.error("Error updating manager");
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Error updating manager",
+      });
     }
   };
+  
 
   const createAccountManager = async () => {
     if (!newManager.username || !newManager.password || !newManager.email || !newManager.first_name || !newManager.last_name || !newManager.phone_number) {
-      toast.error("All fields are required");
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "All fields are required",
+      });
       return;
     }
-  
+
     const payload = {
       first_name: newManager.first_name,
       last_name: newManager.last_name,
@@ -111,9 +139,9 @@ export default function AccountManagerDashboard() {
       username: newManager.username,
       phone_number: newManager.phone_number,
       password: newManager.password,
-      access_level: "account_manager",      
+      access_level: "account_manager",
     };
-  
+
     try {
       const response = await fetch("http://127.0.0.1:8000/auth/register/", {
         method: "POST",
@@ -123,10 +151,21 @@ export default function AccountManagerDashboard() {
   
       if (!response.ok) throw new Error(`Failed to create manager. Status: ${response.status}`);
   
-      toast.success("Account Manager added");
+      toast({
+        variant: "default",
+        title: "Success",
+        description: "Account Manager added",
+      });
+  
       fetchAccountManagers();
+      setIsDialogOpen(false); // Close dialog after success
+      setNewManager({ first_name: "", last_name: "", email: "", username: "", phone_number: "", password: "" }); // Clear form
     } catch (error) {
-      toast.error("Error creating manager");
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Error creating manager",
+      });
     }
   };
   
@@ -137,9 +176,9 @@ export default function AccountManagerDashboard() {
 
       <Input placeholder="Search Account Managers" onChange={(e) => setSearchQuery(e.target.value.toLowerCase())} />
 
-      <Dialog>
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogTrigger asChild>
-          <Button>Add Account Manager</Button>
+          <Button onClick={() => setIsDialogOpen(true)}>Add Account Manager</Button>
         </DialogTrigger>
         <DialogContent>
           <DialogHeader>
