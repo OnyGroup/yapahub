@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import EditDeleteManagers from "./EditDeleteManagers";
 
 interface AccountManager {
   id: number;
@@ -225,6 +226,13 @@ const createAccountManager = async () => {
                     .filter((client) => client.account_manager === manager.id)
                     .map((client) => client.name)
                     .join(", ") || "No Clients"}
+                </TableCell>
+                <TableCell>
+                  <EditDeleteManagers 
+                    manager={manager} 
+                    onManagerUpdated={fetchAccountManagers} 
+                    onDelete={fetchAccountManagers}
+                  />
                 </TableCell>
               </TableRow>
             ))}
