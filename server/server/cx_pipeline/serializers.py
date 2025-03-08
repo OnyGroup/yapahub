@@ -1,6 +1,5 @@
 from rest_framework import serializers
-from .models import CxPipeline, PipelineStage, PipelineActivity
-
+from .models import CxPipeline, PipelineStage, PipelineActivity, StageTransition
 
 class PipelineStageSerializer(serializers.ModelSerializer):
     created_by_name = serializers.SerializerMethodField()
@@ -15,6 +14,31 @@ class PipelineStageSerializer(serializers.ModelSerializer):
             return full_name if full_name else obj.created_by.username
         return None
 
+class StageTransitionSerializer(serializers.ModelSerializer):
+    from_stage_name = serializers.ReadOnlyField(source='from_stage.name')
+    to_stage_name = serializers.ReadOnlyField(source='to_stage.name')
+    user_name = serializers.SerializerMethodField()
+    duration_days = serializers.SerializerMethodField()
+    duration_readable = serializers.ReadOnlyField(source='duration_str')
+    is_active = serializers.ReadOnlyField()
+    is_overdue = serializers.ReadOnlyField()
+    
+    class Meta:
+        model = StageTransition
+        fields = [
+            'id', 'pipeline', 'from_stage', 'to_stage', 'from_stage_name', 
+            'to_stage_name', 'entry_date', 'exit_date', 'user', 'user_name',
+            'duration_days', 'duration_readable', 'is_active', 'is_overdue'
+        ]
+    
+    def get_user_name(self, obj):
+        if obj.user:
+            full_name = f"{obj.user.first_name} {obj.user.last_name}".strip()
+            return full_name if full_name else obj.user.username
+        return None
+    
+    def get_duration_days(self, obj):
+        return obj.duration
 
 class PipelineActivitySerializer(serializers.ModelSerializer):
     user_name = serializers.SerializerMethodField()
@@ -30,7 +54,6 @@ class PipelineActivitySerializer(serializers.ModelSerializer):
             return full_name if full_name else obj.user.username
         return None
 
-
 class CxPipelineSerializer(serializers.ModelSerializer):
     client_name = serializers.ReadOnlyField(source="client.name")
     account_manager_name = serializers.SerializerMethodField()
@@ -38,6 +61,9 @@ class CxPipelineSerializer(serializers.ModelSerializer):
     stage_name = serializers.ReadOnlyField(source="stage.name", default=None)
     notes = serializers.CharField(allow_blank=True, required=False, max_length=2000)
     recent_activities = serializers.SerializerMethodField()
+    current_stage_duration = serializers.SerializerMethodField()
+    stage_transitions = serializers.SerializerMethodField()
+    is_current_stage_overdue = serializers.ReadOnlyField(source='is_stage_overdue')
     
     class Meta:
         model = CxPipeline
@@ -57,9 +83,21 @@ class CxPipelineSerializer(serializers.ModelSerializer):
         activities = obj.activities.all()[:5]
         return PipelineActivitySerializer(activities, many=True).data
     
+    def get_current_stage_duration(self, obj):
+        return {
+            'days': obj.current_stage_duration_days,
+            'start_date': obj.stage_start_date
+        }
+    
+    def get_stage_transitions(self, obj):
+        transitions = obj.transitions.all()[:10]  # Get the 10 most recent transitions
+        return StageTransitionSerializer(transitions, many=True).data
+    
     def create(self, validated_data):
         user = self.context['request'].user
-        pipeline = super().create(validated_data)
+        pipeline = CxPipeline(**validated_data)
+        # Pass user to save method to track in StageTransition
+        pipeline.save(user=user)
         
         # Record creation activity
         PipelineActivity.objects.create(
@@ -98,6 +136,10 @@ class CxPipelineSerializer(serializers.ModelSerializer):
                 new_value=new_manager,
             )
         
+        # Update the instance fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        
         # Pass the user to save method for stage change tracking
-        pipeline = super().update(instance, validated_data)
-        return pipeline
+        instance.save(user=user)
+        return instance

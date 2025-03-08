@@ -1,16 +1,18 @@
-from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
+from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView, ListAPIView
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, filters
 from rest_framework.permissions import IsAuthenticated
-from django.db.models import Q
-from .models import CxPipeline, PipelineStage, PipelineActivity
+from django.db.models import Q, F, ExpressionWrapper, DurationField, Avg
+from django.utils import timezone
+from django.db.models.functions import Now
+from .models import CxPipeline, PipelineStage, PipelineActivity, StageTransition
 from .serializers import (
     CxPipelineSerializer, 
     PipelineStageSerializer, 
-    PipelineActivitySerializer
+    PipelineActivitySerializer,
+    StageTransitionSerializer
 )
-
 
 class PipelineStageListCreateView(ListCreateAPIView):
     permission_classes = [IsAuthenticated]
@@ -21,7 +23,6 @@ class PipelineStageListCreateView(ListCreateAPIView):
     
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
-
 
 class PipelineStageRetrieveUpdateDestroyView(RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
@@ -38,6 +39,65 @@ class PipelineStageRetrieveUpdateDestroyView(RetrieveUpdateDestroyAPIView):
             )
         return super().destroy(request, *args, **kwargs)
 
+class StageTransitionListView(ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = StageTransitionSerializer
+    filter_backends = [filters.OrderingFilter]
+    ordering_fields = ['entry_date', 'exit_date']
+    
+    def get_queryset(self):
+        pipeline_id = self.kwargs.get('pipeline_id')
+        return StageTransition.objects.filter(pipeline_id=pipeline_id)
+
+class StageDurationStatsView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, format=None):
+        """
+        Get stats about average duration in each stage
+        """
+        stats = []
+        for stage in PipelineStage.objects.all():
+            # Get completed transitions for this stage
+            completed_transitions = StageTransition.objects.filter(
+                to_stage=stage, 
+                exit_date__isnull=False
+            )
+            
+            # Calculate the average duration
+            avg_duration = completed_transitions.aggregate(
+                avg_days=Avg(ExpressionWrapper(
+                    F('exit_date') - F('entry_date'),
+                    output_field=DurationField()
+                ))
+            )['avg_days']
+            
+            # Get active transitions
+            active_transitions = StageTransition.objects.filter(
+                to_stage=stage, 
+                exit_date__isnull=True
+            ).count()
+            
+            # Get overdue transitions
+            overdue_count = 0
+            if stage.expected_duration_days:
+                overdue_date = timezone.now() - timezone.timedelta(days=stage.expected_duration_days)
+                overdue_count = StageTransition.objects.filter(
+                    to_stage=stage,
+                    exit_date__isnull=True,
+                    entry_date__lt=overdue_date
+                ).count()
+            
+            stats.append({
+                'stage_id': stage.id,
+                'stage_name': stage.name,
+                'expected_duration_days': stage.expected_duration_days,
+                'avg_duration_days': avg_duration.days if avg_duration else 0,
+                'active_count': active_transitions,
+                'overdue_count': overdue_count,
+            })
+        
+        return Response(stats)
 
 class PipelineActivityListCreateView(ListCreateAPIView):
     permission_classes = [IsAuthenticated]
@@ -56,17 +116,31 @@ class PipelineActivityListCreateView(ListCreateAPIView):
             user=self.request.user
         )
 
-
 class CxPipelineListCreateView(ListCreateAPIView):
     permission_classes = [IsAuthenticated]
     queryset = CxPipeline.objects.all()
     serializer_class = CxPipelineSerializer
+    filter_backends = [filters.OrderingFilter]
+    ordering_fields = ['client__name', 'stage__order', 'last_updated']
     
     def get_serializer_context(self):
         context = super().get_serializer_context()
         context.update({"request": self.request})
         return context
-
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        
+        # Filter by overdue status if requested
+        overdue = self.request.query_params.get('overdue', None)
+        if overdue:
+            now = timezone.now()
+            queryset = queryset.filter(
+                stage__isnull=False,
+                stage_start_date__lt=now - timezone.timedelta(days=F('stage__expected_duration_days'))
+            )
+        
+        return queryset
 
 class CxPipelineRetrieveUpdateDestroyView(RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
@@ -77,7 +151,6 @@ class CxPipelineRetrieveUpdateDestroyView(RetrieveUpdateDestroyAPIView):
         context = super().get_serializer_context()
         context.update({"request": self.request})
         return context
-
 
 class MigratePipelineStagesView(APIView):
     permission_classes = [IsAuthenticated]
@@ -101,6 +174,7 @@ class MigratePipelineStagesView(APIView):
                 name=name,
                 order=order,
                 is_default=True,
+                expected_duration_days=(order + 1) * 7,  # Set reasonable default durations
                 created_by=request.user
             )
             stages.append(stage)
@@ -111,6 +185,15 @@ class MigratePipelineStagesView(APIView):
             stage_index = pipeline.status - 1  # Adjust for 0-based indexing
             if 0 <= stage_index < len(stages):
                 pipeline.stage = stages[stage_index]
+                # Create initial transition
+                StageTransition.objects.create(
+                    pipeline=pipeline,
+                    from_stage=None,
+                    to_stage=stages[stage_index],
+                    user=request.user,
+                    entry_date=pipeline.last_updated
+                )
+                pipeline.stage_start_date = pipeline.last_updated
                 pipeline.save()
         
         return Response({
