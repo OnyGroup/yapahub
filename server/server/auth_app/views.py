@@ -6,6 +6,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.contrib.auth.models import Group, User
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.parsers import JSONParser
 from .models import UserProfile, CxClient
 from .serializers import CxClientSerializer
 
@@ -172,3 +173,53 @@ class AccountManagersView(APIView):
     } 
     for manager in managers
 ])
+
+class AccountManagerRetrieveUpdateDestroyView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, pk):
+        try:
+            user = User.objects.get(pk=pk)
+
+            if not user.groups.filter(name="Account Managers").exists():
+                return Response({"error": "User is not an Account Manager"}, status=status.HTTP_400_BAD_REQUEST)
+
+            data = request.data
+            allowed_fields = ["first_name", "last_name", "email", "username"]
+
+            # Update User fields
+            for field in allowed_fields:
+                if field in data:
+                    if field == "username":
+                        # Ensure the new username is unique
+                        if User.objects.filter(username=data["username"]).exclude(pk=user.pk).exists():
+                            return Response({"error": "Username already taken"}, status=status.HTTP_400_BAD_REQUEST)
+                    setattr(user, field, data[field])
+
+            # Update phone number in UserProfile
+            if "phone_number" in data:
+                if hasattr(user, "profile"):  # Ensure UserProfile exists
+                    user.profile.phone_number = data["phone_number"]
+                    user.profile.save()
+                else:
+                    return Response({"error": "User profile not found"}, status=status.HTTP_400_BAD_REQUEST)
+
+            user.save()
+            return Response({"message": "Account Manager updated successfully"}, status=status.HTTP_200_OK)
+        
+        except User.DoesNotExist:
+            return Response({"error": "Account Manager not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    def delete(self, request, pk):
+        try:
+            user = User.objects.get(pk=pk)
+
+            if not user.groups.filter(name="Account Managers").exists():
+                return Response({"error": "User is not an Account Manager"}, status=status.HTTP_400_BAD_REQUEST)
+
+            user.delete()
+            return Response({"message": "Account Manager deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+        except User.DoesNotExist:
+            return Response({"error": "Account Manager not found"}, status=status.HTTP_404_NOT_FOUND)
+
+
