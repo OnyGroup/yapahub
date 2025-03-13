@@ -80,7 +80,7 @@ INSTALLED_APPS = [
     'payments',
     'django_extensions',
     'channels',
-    'call_center',
+    # 'call_center',
     'cx_pipeline',
 
     # third party apps
