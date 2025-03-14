@@ -17,3 +17,5 @@ django-extensions==3.2.3
 django-cors-headers==4.7.0
 pjsua2==2.12
 pjsua2_pybind11==0.1a3
+psycopg2=2.9.10
+whitenoise=6.9.0
