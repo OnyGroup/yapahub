@@ -63,7 +63,7 @@ export default function InventoryDashboard() {
     const fetchData = async () => {
       try {
         // Fetch inventory with pagination
-        const inventoryResponse = await axios.get(`${API_BASE_URL}products/?page=${currentPage}`, {
+        const inventoryResponse = await axios.get(`${API_BASE_URL}/products/?page=${currentPage}`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
           },
@@ -74,7 +74,7 @@ export default function InventoryDashboard() {
         setPrevPageUrl(inventoryResponse.data.previous);
 
         // Fetch categories
-        const categoriesResponse = await axios.get(`${API_BASE_URL}categories/`, {
+        const categoriesResponse = await axios.get(`${API_BASE_URL}/categories/`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
           },
@@ -113,7 +113,7 @@ export default function InventoryDashboard() {
       });
 
       // Refresh inventory after adding
-      const response = await axios.get(`${API_BASE_URL}products/?page=${currentPage}`, {
+      const response = await axios.get(`${API_BASE_URL}/products/?page=${currentPage}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
         },
@@ -156,7 +156,7 @@ export default function InventoryDashboard() {
   const handleUpdateStock = async (id: number, newStock: number) => {
     try {
       await axios.patch(
-        `${API_BASE_URL}products/${id}/`,
+        `${API_BASE_URL}/products/${id}/`,
         { stock: newStock },
         {
           headers: {
