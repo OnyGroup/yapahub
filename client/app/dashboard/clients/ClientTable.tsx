@@ -29,6 +29,7 @@ const ClientTable = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
   const { toast } = useToast();
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
   useEffect(() => {
     fetchClients();
@@ -40,7 +41,7 @@ const ClientTable = () => {
       if (!accessToken) {
         throw new Error("Unauthorized: No access token found.");
       }
-      const response = await axios.get("http://127.0.0.1:8000/auth/clients/", {
+      const response = await axios.get(`${API_BASE_URL}auth/clients/`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
@@ -59,7 +60,7 @@ const ClientTable = () => {
       if (!accessToken) {
         throw new Error("Unauthorized: No access token found.");
       }
-      await axios.delete(`http://127.0.0.1:8000/auth/clients/${clientToDelete.id}/`, {
+      await axios.delete(`${API_BASE_URL}auth/clients/${clientToDelete.id}/`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },

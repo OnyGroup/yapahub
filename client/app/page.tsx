@@ -19,11 +19,12 @@ export default function ProductsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("price"); // Default to ascending price
   const [loading, setLoading] = useState(true);
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        let url = `http://127.0.0.1:8000/store/products/?page=${currentPage}&ordering=${sortBy}`;
+        let url = `${API_BASE_URL}store/products/?page=${currentPage}&ordering=${sortBy}`;
         if (searchTerm) {
           url += `&search=${searchTerm}`;
         }

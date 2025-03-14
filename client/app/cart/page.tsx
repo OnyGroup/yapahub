@@ -31,9 +31,11 @@ export default function CartPage() {
   const { toast } = useToast();
   const router = useRouter();
 
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+
   const fetchCartItems = async () => {
     try {
-      const response = await axios.get("http://127.0.0.1:8000/store/cart-items/", {
+      const response = await axios.get(`${API_BASE_URL}store/cart-items/`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
         },
@@ -65,7 +67,7 @@ export default function CartPage() {
     
     try {
       await axios.patch(
-        `http://127.0.0.1:8000/store/cart-items/${itemId}/`,
+        `${API_BASE_URL}store/cart-items/${itemId}/`,
         { quantity: newQuantity },
         {
           headers: {
@@ -90,7 +92,7 @@ export default function CartPage() {
 
   const removeItem = async (itemId: number, productName: string) => {
     try {
-      await axios.delete(`http://127.0.0.1:8000/store/cart-items/${itemId}/`, {
+      await axios.delete(`${API_BASE_URL}store/cart-items/${itemId}/`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
         },

@@ -29,6 +29,8 @@ const statusColors: Record<number, string> = {
   5: "bg-gray-500",
 };
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+
 export default function Pipelines() {
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,7 +44,7 @@ export default function Pipelines() {
       return;
     }
 
-    fetch("http://127.0.0.1:8000/pipeline/pipelines/", {
+    fetch(`${API_BASE_URL}pipeline/pipelines/`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",

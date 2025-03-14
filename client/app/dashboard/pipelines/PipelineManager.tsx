@@ -43,6 +43,8 @@ const statusColors: Record<number, string> = {
   5: "bg-gray-500",
 };
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+
 export default function PipelineManager() {
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -66,7 +68,7 @@ export default function PipelineManager() {
     setLoading(true);
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/pipeline/pipelines/", {
+      const response = await fetch(`${API_BASE_URL}pipeline/pipelines/`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -94,7 +96,7 @@ export default function PipelineManager() {
     const token = localStorage.getItem("accessToken");
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/auth/clients/", {
+      const response = await fetch(`${API_BASE_URL}auth/clients/`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -119,8 +121,8 @@ export default function PipelineManager() {
   const handleCreateOrUpdate = async () => {
     const token = localStorage.getItem("accessToken");
     const url = editingPipeline
-      ? `http://127.0.0.1:8000/pipeline/pipelines/${editingPipeline.id}/`
-      : "http://127.0.0.1:8000/pipeline/pipelines/";
+      ? `${API_BASE_URL}pipeline/pipelines/${editingPipeline.id}/`
+      : `${API_BASE_URL}pipeline/pipelines/`;
 
     const method = editingPipeline ? "PATCH" : "POST";
     const body = JSON.stringify({
@@ -166,7 +168,7 @@ export default function PipelineManager() {
     const token = localStorage.getItem("accessToken");
 
     try {
-      const response = await fetch(`http://127.0.0.1:8000/pipeline/pipelines/${id}/`, {
+      const response = await fetch(`${API_BASE_URL}pipeline/pipelines/${id}/`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,

@@ -4,8 +4,10 @@ import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+
 const fetchAccountManagers = async () => {
-  const response = await axios.get("http://127.0.0.1:8000/auth/account-managers/");
+  const response = await axios.get(`${API_BASE_URL}auth/account-managers/`);
   return response.data;
 };
 

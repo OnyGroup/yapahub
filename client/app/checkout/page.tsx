@@ -31,6 +31,7 @@ const formSchema = z.object({
 
 export default function CheckoutPage() {
   const methods = useForm();
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
   const [loading, setLoading] = useState(false);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -54,7 +55,7 @@ export default function CheckoutPage() {
   useEffect(() => {
     const fetchCartItems = async () => {
       try {
-        const response = await axios.get("http://127.0.0.1:8000/store/cart-items/", {
+        const response = await axios.get(`${API_BASE_URL}store/cart-items/`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
           },
@@ -80,13 +81,13 @@ export default function CheckoutPage() {
     };
 
     fetchCartItems();
-  }, [router, toast]);
+  }, [router, toast, API_BASE_URL]);
 
   const onSubmit = async (values: { email: string; address: string }) => {
     setLoading(true);
     try {
       const response = await axios.post(
-        "http://127.0.0.1:8000/payments/initialize/",
+        `${API_BASE_URL}payments/initialize/`,
         {
           email: values.email,
           shipping_address: values.address,

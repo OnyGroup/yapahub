@@ -65,9 +65,11 @@ export default function AccountManagerDashboard() {
     Authorization: `Bearer ${token || ""}`,
   };
 
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+
   const fetchAccountManagers = async () => {
     try {
-      const response = await fetch("http://127.0.0.1:8000/auth/account-managers/", { headers });
+      const response = await fetch(`${API_BASE_URL}auth/account-managers/`, { headers });
       if (!response.ok) throw new Error(`Failed to fetch. Status: ${response.status}`);
       const data = await response.json();
       console.log("Account managers data:", data);
@@ -79,7 +81,7 @@ export default function AccountManagerDashboard() {
 
   const fetchClients = async () => {
     try {
-      const response = await fetch("http://127.0.0.1:8000/auth/clients/", { headers });
+      const response = await fetch(`${API_BASE_URL}auth/clients/`, { headers });
       if (!response.ok) throw new Error(`Failed to fetch. Status: ${response.status}`);
       const data = await response.json();
       setClients(data);
@@ -99,7 +101,7 @@ export default function AccountManagerDashboard() {
     }
   
     try {
-      const response = await fetch(`http://127.0.0.1:8000/auth/clients/${clientId}/`, {
+      const response = await fetch(`${API_BASE_URL}auth/clients/${clientId}/`, {
         method: "PATCH",
         headers: headers,
         body: JSON.stringify({ account_manager: selectedManager }),
@@ -150,7 +152,7 @@ const createAccountManager = async () => {
       "Content-Type": "application/json",
     };
     
-    const response = await fetch("http://127.0.0.1:8000/auth/register/", {
+    const response = await fetch(`${API_BASE_URL}auth/register/`, {
       method: "POST",
       headers: registerHeaders,  // Use headers without Authorization
       body: JSON.stringify(payload),

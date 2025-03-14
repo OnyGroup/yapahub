@@ -53,8 +53,10 @@ const ClientForm = ({ accountManagers }: { accountManagers: {
       if (!accessToken) {
         throw new Error("Unauthorized: No access token found.");
       }
+
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
   
-      await axios.post("http://127.0.0.1:8000/auth/clients/", data, {
+      await axios.post(`${API_BASE_URL}auth/clients/`, data, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },

@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+
 interface Client {
   id: number;
   name: string;
@@ -45,7 +47,7 @@ const EditClientForm = ({ client, isOpen, onClose, onUpdate }: EditClientFormPro
       const accessToken = localStorage.getItem("accessToken");
       if (!accessToken) throw new Error("Unauthorized: No access token found.");
 
-      await axios.patch(`http://127.0.0.1:8000/auth/clients/${formData.id}/`, formData, {
+      await axios.patch(`${API_BASE_URL}auth/clients/${formData.id}/`, formData, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
 

@@ -14,12 +14,14 @@ export default function ProductList({ products }: ProductListProps) {
   const router = useRouter();
   const { updateCartCount } = useCart();
 
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+
   const handleAddToCart = async (productId: number, event: React.MouseEvent) => {
     event.stopPropagation(); // Prevents navigating when clicking 'Add to Cart'
     try {
       // First add the item to cart
       const response = await axios.post(
-        "http://127.0.0.1:8000/store/carts/add/",
+        `${API_BASE_URL}store/carts/add/`,
         { product_id: productId },
         {
           headers: {
@@ -33,7 +35,7 @@ export default function ProductList({ products }: ProductListProps) {
 
       // Get the total items using the correct endpoint
       const cartItemsResponse = await axios.get(
-        `http://127.0.0.1:8000/store/carts/${cartId}/total-items/`,
+        `${API_BASE_URL}store/carts/${cartId}/total-items/`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
