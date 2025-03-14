@@ -29,6 +29,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Category, InventoryItem } from "@/types/types_inventory";
 import InventoryActions from "./InventoryActions";
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL + "store";
+
 export default function InventoryDashboard() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -61,7 +63,7 @@ export default function InventoryDashboard() {
     const fetchData = async () => {
       try {
         // Fetch inventory with pagination
-        const inventoryResponse = await axios.get(`http://127.0.0.1:8000/store/products/?page=${currentPage}`, {
+        const inventoryResponse = await axios.get(`${API_BASE_URL}/products/?page=${currentPage}`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
           },
@@ -72,7 +74,7 @@ export default function InventoryDashboard() {
         setPrevPageUrl(inventoryResponse.data.previous);
 
         // Fetch categories
-        const categoriesResponse = await axios.get("http://127.0.0.1:8000/store/categories/", {
+        const categoriesResponse = await axios.get(`${API_BASE_URL}/categories/`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
           },
@@ -103,7 +105,7 @@ export default function InventoryDashboard() {
         formData.append("images", newProduct.image); // Append image file
       }
 
-      await axios.post("http://127.0.0.1:8000/store/products/", formData, {
+      await axios.post(`${API_BASE_URL}products/`, formData, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
           "Content-Type": "multipart/form-data",
@@ -111,7 +113,7 @@ export default function InventoryDashboard() {
       });
 
       // Refresh inventory after adding
-      const response = await axios.get(`http://127.0.0.1:8000/store/products/?page=${currentPage}`, {
+      const response = await axios.get(`${API_BASE_URL}/products/?page=${currentPage}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
         },
@@ -154,7 +156,7 @@ export default function InventoryDashboard() {
   const handleUpdateStock = async (id: number, newStock: number) => {
     try {
       await axios.patch(
-        `http://127.0.0.1:8000/store/products/${id}/`,
+        `${API_BASE_URL}/products/${id}/`,
         { stock: newStock },
         {
           headers: {

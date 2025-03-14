@@ -17,6 +17,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Category, InventoryItem } from "@/types/types_inventory";
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+
 interface InventoryActionsProps {
   item: InventoryItem;
   categories: Category[];
@@ -41,7 +43,7 @@ export default function InventoryActions({ item, categories, onUpdate, onDelete 
 
   const handleEditProduct = async () => {
     try {
-      console.log(`Sending PATCH request to /store/products/${item.id}/`);
+      console.log(`Sending PATCH request to ${API_BASE_URL}store/products/${item.id}/`);
   
       // Create FormData to handle both JSON data and file uploads
       const formData = new FormData();
@@ -60,7 +62,7 @@ export default function InventoryActions({ item, categories, onUpdate, onDelete 
       }
   
       await axios.patch(
-        `http://127.0.0.1:8000/store/products/${item.id}/`,
+        `${API_BASE_URL}store/products/${item.id}/`,
         formData, // Send FormData instead of JSON
         {
           headers: {
@@ -104,8 +106,8 @@ export default function InventoryActions({ item, categories, onUpdate, onDelete 
 
   const handleDeleteProduct = async () => {
     try {
-      console.log(`Sending DELETE request to /store/products/${item.id}/`);
-      await axios.delete(`http://127.0.0.1:8000/store/products/${item.id}/`, {
+      console.log(`Sending DELETE request to ${API_BASE_URL}store/products/${item.id}/`);
+      await axios.delete(`${API_BASE_URL}store/products/${item.id}/`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
         },

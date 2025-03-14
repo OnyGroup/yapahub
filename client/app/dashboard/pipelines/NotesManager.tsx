@@ -11,6 +11,8 @@ interface NotesManagerProps {
   initialNotes: string;
 }
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+
 export default function NotesManager({ pipelineId, initialNotes }: NotesManagerProps) {
   const [notes, setNotes] = useState(initialNotes);
   const [open, setOpen] = useState(false);
@@ -20,7 +22,7 @@ export default function NotesManager({ pipelineId, initialNotes }: NotesManagerP
     const token = localStorage.getItem("accessToken");
 
     try {
-      const response = await fetch(`http://127.0.0.1:8000/pipeline/pipelines/${pipelineId}/`, {
+      const response = await fetch(`${API_BASE_URL}pipeline/pipelines/${pipelineId}/`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

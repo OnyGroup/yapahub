@@ -18,13 +18,14 @@ export default function ProductDetails() {
   const [loading, setLoading] = useState(true);
   const { updateCartCount } = useCart();
   const { toast } = useToast();
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
   useEffect(() => {
     if (!id) return;
 
     const fetchProductDetails = async () => {
       try {
-        const response = await axios.get(`http://127.0.0.1:8000/store/products/${id}/`);
+        const response = await axios.get(`${API_BASE_URL}store/products/${id}/`);
         setProduct(response.data);
       } catch (error) {
         console.error("Error fetching product details", error);
@@ -42,7 +43,7 @@ export default function ProductDetails() {
   
       try {
         const response = await axios.post(
-          "http://127.0.0.1:8000/store/carts/add/",
+          `${API_BASE_URL}store/carts/add/`,
           { product_id: product.id },
           {
             headers: {
@@ -55,7 +56,7 @@ export default function ProductDetails() {
   
         // ✅ Fetch updated cart total items
         const cartItemsResponse = await axios.get(
-          `http://127.0.0.1:8000/store/carts/${cartId}/total-items/`,
+          `${API_BASE_URL}store/carts/${cartId}/total-items/`,
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("accessToken")}`,

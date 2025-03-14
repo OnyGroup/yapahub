@@ -41,6 +41,8 @@ interface CustomerData {
   activity_timeline: Array<{ timestamp__date: string; total_sales: number }>;
 }
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+
 const CustomersDashboard = () => {
   const [customerData, setCustomerData] = useState<CustomerData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -51,7 +53,7 @@ const CustomersDashboard = () => {
     setLoading(true);
     try {
       const response = await axios.get(
-        `http://127.0.0.1:8000/analytics/customers/dashboard/?time_period=${period}`,
+        `${API_BASE_URL}analytics/customers/dashboard/?time_period=${period}`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("accessToken")}`,

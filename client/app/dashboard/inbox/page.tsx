@@ -11,6 +11,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useToast } from "@/hooks/use-toast";
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_BASE_URL;
+
 // Define types for the message
 interface Message {
   id: number;
@@ -46,7 +49,7 @@ const Inbox = () => {
   useEffect(() => {
     const fetchCurrentUser = async () => {
       try {
-        const response = await axios.get("http://127.0.0.1:8000/auth/me/", {
+        const response = await axios.get(`${API_BASE_URL}auth/me/`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
           },
@@ -68,7 +71,7 @@ const Inbox = () => {
     if (!token) return;
     
     // Create WebSocket connection
-    const socket = new WebSocket(`ws://127.0.0.1:8000/ws/chat/${currentUsername}/?token=${token}`);
+    const socket = new WebSocket(`${WS_BASE_URL}/ws/chat/${currentUsername}/?token=${token}`);
     socketRef.current = socket;
 
     // Connection opened
@@ -115,7 +118,7 @@ const Inbox = () => {
       setTimeout(() => {
         if (!socketRef.current || socketRef.current.readyState === WebSocket.CLOSED) {
           const token = localStorage.getItem("accessToken");
-          socketRef.current = new WebSocket(`ws://127.0.0.1:8000/ws/chat/${currentUsername}/?token=${token}`);
+          socketRef.current = new WebSocket(`${WS_BASE_URL}/ws/chat/${currentUsername}/?token=${token}`);
         }
       }, 3000);  // Reconnect after 3 seconds
     });    
@@ -130,7 +133,7 @@ const Inbox = () => {
   useEffect(() => {
     const fetchMessages = async () => {
       try {
-        const response = await axios.get<Message[]>("http://127.0.0.1:8000/inbox/", {
+        const response = await axios.get<Message[]>(`${API_BASE_URL}inbox/`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
           },
@@ -227,7 +230,7 @@ const Inbox = () => {
         }
       } else {
         // Fallback to HTTP if WebSocket is not available
-        const response = await axios.post("http://127.0.0.1:8000/inbox/send_message/", newMessage, {
+        const response = await axios.post(`${API_BASE_URL}inbox/send_message/`, newMessage, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
           },

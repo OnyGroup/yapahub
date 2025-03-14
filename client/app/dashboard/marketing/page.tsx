@@ -38,6 +38,8 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+
 // Define TypeScript interfaces for the data
 interface Campaign {
   id: number;
@@ -93,7 +95,7 @@ const MarketingDashboard = () => {
   useEffect(() => {
     const fetchCampaigns = async () => {
       try {
-        const response = await axios.get("http://127.0.0.1:8000/marketing/campaigns/", {
+        const response = await axios.get(`${API_BASE_URL}marketing/campaigns/`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
           },
@@ -112,7 +114,7 @@ const MarketingDashboard = () => {
   useEffect(() => {
     const fetchCustomerSegments = async () => {
       try {
-        const response = await axios.get("http://127.0.0.1:8000/analytics/customers/dashboard/", {
+        const response = await axios.get(`${API_BASE_URL}analytics/customers/dashboard/`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
           },
@@ -140,7 +142,7 @@ const MarketingDashboard = () => {
     const fetchPerformanceData = async () => {
       try {
         const response = await axios.get(
-          `http://127.0.0.1:8000/marketing/campaigns/${selectedCampaignId}/performance/`,
+          `${API_BASE_URL}marketing/campaigns/${selectedCampaignId}/performance/`,
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
@@ -174,7 +176,7 @@ const MarketingDashboard = () => {
     const audienceIds: number[] = [];
     for (const segment of segments) {
       try {
-        const response = await axios.get(`http://127.0.0.1:8000/analytics/customers/segment/${segment}/`, {
+        const response = await axios.get(`${API_BASE_URL}analytics/customers/segment/${segment}/`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
           },
@@ -203,7 +205,7 @@ const MarketingDashboard = () => {
             scheduled_at: newCampaignData.scheduled_at,
         };
 
-        await axios.post("http://127.0.0.1:8000/marketing/campaigns/", payload, {
+        await axios.post(`${API_BASE_URL}marketing/campaigns/`, payload, {
             headers: {
                 Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
             },
@@ -220,7 +222,7 @@ const MarketingDashboard = () => {
         setSelectedSegments([]);
 
         // Refresh campaigns after creation
-        const response = await axios.get("http://127.0.0.1:8000/marketing/campaigns/", {
+        const response = await axios.get(`${API_BASE_URL}marketing/campaigns/`, {
             headers: {
                 Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
             },
@@ -247,7 +249,7 @@ const MarketingDashboard = () => {
   const handleDiscountSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await axios.post("http://127.0.0.1:8000/marketing/discounts/", discountFormData, {
+      await axios.post(`${API_BASE_URL}marketing/discounts/`, discountFormData, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
         },

@@ -17,8 +17,10 @@ export function Header() {
           console.error('No access token found')
           return
         }
+
+        const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
         // Send the logout request to the backend
-        const response = await fetch('http://127.0.0.1:8000/auth/logout/', {
+        const response = await fetch(`${API_BASE_URL}auth/logout/`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

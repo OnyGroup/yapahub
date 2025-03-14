@@ -45,9 +45,11 @@ export default function EditDeleteAccountManager({ manager, onManagerUpdated, on
     Authorization: `Bearer ${token || ""}`,
   };
 
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+
   const handleUpdate = async () => {
     try {
-      const response = await fetch(`http://127.0.0.1:8000/auth/account-managers/${manager.id}/`, {
+      const response = await fetch(`${API_BASE_URL}auth/account-managers/${manager.id}/`, {
         method: "PATCH",
         headers,
         body: JSON.stringify(updatedManager),
@@ -73,7 +75,7 @@ export default function EditDeleteAccountManager({ manager, onManagerUpdated, on
 
   const handleDelete = async () => {
     try {
-      const response = await fetch(`http://127.0.0.1:8000/auth/account-managers/${manager.id}/`, {
+      const response = await fetch(`${API_BASE_URL}auth/account-managers/${manager.id}/`, {
         method: "DELETE",
         headers,
       });
