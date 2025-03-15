@@ -22,7 +22,7 @@ export default async function Page() {
               Sign up to Yapa Hub to enjoy our customer experience platform. A culture-provoking platform that harnesses
               the power of Artificial Intelligence.
             </p>
-            <Button asChild variant="outline" size="lg">
+            <Button asChild size="lg" className="border-white text-white hover:bg-white hover:text-primary">
               <Link href="/register">Register Now!</Link>
             </Button>
           </div>
