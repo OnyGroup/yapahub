@@ -105,7 +105,7 @@ export default function InventoryDashboard() {
         formData.append("images", newProduct.image); // Append image file
       }
 
-      await axios.post(`${API_BASE_URL}products/`, formData, {
+      await axios.post(`${API_BASE_URL}/products/`, formData, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
           "Content-Type": "multipart/form-data",
