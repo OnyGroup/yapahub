@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { useToast } from "@/hooks/use-toast"
 import useDictionary from "@/locales/dictionary-hook"
 import { registerUser } from "@/services/auth"
 import type { RegisterUserData } from "@/types/auth"
@@ -15,6 +16,7 @@ import type { RegisterUserData } from "@/types/auth"
 export default function RegisterForm() {
   const router = useRouter()
   const dict = useDictionary()
+  const { toast } = useToast()
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState("")
   const [formData, setFormData] = useState<RegisterUserData>({
@@ -39,10 +41,26 @@ export default function RegisterForm() {
     try {
       const response = await registerUser(formData)
       if (response) {
-        router.push("/login")
+        toast({
+          title: "Registration Successful",
+          description: "Your business owner account has been created successfully.",
+          variant: "default",
+        })
+        
+        // Redirect after a short delay to allow the toast to be seen
+        setTimeout(() => {
+          router.push("/login")
+        }, 1500)
       }
     } catch (err: any) {
-      setError(err.response?.data?.error || err.response?.data?.detail || "Registration failed")
+      const errorMessage = err.response?.data?.error || err.response?.data?.detail || "Registration failed"
+      setError(errorMessage)
+      
+      toast({
+        title: "Registration Failed",
+        description: errorMessage,
+        variant: "destructive",
+      })
     } finally {
       setSubmitting(false)
     }

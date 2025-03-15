@@ -1,11 +1,13 @@
 import RegisterForm from "./register-form"
 import { getDictionary } from "@/locales/dictionary"
+import { Toaster } from "@/components/ui/toaster"
 
 export default async function Page() {
   const dict = await getDictionary()
 
   return (
     <div className="flex min-h-screen bg-background">
+      <Toaster />
       <div className="flex flex-1 flex-col justify-center px-4 py-12 sm:px-6 lg:flex-none lg:px-20 xl:px-24">
         <div className="mx-auto w-full max-w-sm lg:w-96">
           <div className="space-y-6">
@@ -29,4 +31,3 @@ export default async function Page() {
     </div>
   )
 }
-
