@@ -1,5 +1,7 @@
 import RegisterForm from "./register-form"
 import { getDictionary } from "@/locales/dictionary"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
 import { Toaster } from "@/components/ui/toaster"
 
 export default async function Page() {
@@ -25,6 +27,9 @@ export default async function Page() {
               Join our customer experience platform and harness the power of Artificial Intelligence to transform your
               business.
             </p>
+            <Button asChild size="lg" className="border-white text-white hover:bg-white hover:text-primary">
+              <Link href="/login">Have an account? Login!</Link>
+            </Button>
           </div>
         </div>
       </div>
