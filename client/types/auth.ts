@@ -11,7 +11,7 @@ export interface RegisterUserData {
   export interface LoginUserData {
     username: string;
     password: string;
-    roles: string[];
+    roles?: string[];
   }
   
   export interface AuthResponse {
