@@ -1,9 +1,9 @@
-"use client"
+"use client" 
 
 import type React from "react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { User, Mail, Lock } from "lucide-react"
+import { User, Mail, Lock, Phone, UserCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -21,6 +21,10 @@ export default function RegisterForm() {
     username: "",
     email: "",
     password: "",
+    first_name: "",
+    last_name: "",
+    phone_number: "",
+    access_level: "business_owner" // Set default access level to business_owner
   })
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -38,19 +42,57 @@ export default function RegisterForm() {
         router.push("/login")
       }
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Registration failed")
+      setError(err.response?.data?.error || err.response?.data?.detail || "Registration failed")
     } finally {
       setSubmitting(false)
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="first_name">First Name</Label>
+          <div className="relative">
+            <UserCheck className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              id="first_name"
+              name="first_name"
+              type="text"
+              required
+              disabled={submitting}
+              value={formData.first_name}
+              onChange={handleChange}
+              className="pl-10"
+              placeholder="John"
+            />
+          </div>
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="last_name">Last Name</Label>
+          <div className="relative">
+            <UserCheck className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              id="last_name"
+              name="last_name"
+              type="text"
+              required
+              disabled={submitting}
+              value={formData.last_name}
+              onChange={handleChange}
+              className="pl-10"
+              placeholder="Doe"
+            />
+          </div>
+        </div>
+      </div>
 
       <div className="space-y-2">
         <Label htmlFor="username">{dict.signup.form.username}</Label>
@@ -65,6 +107,7 @@ export default function RegisterForm() {
             value={formData.username}
             onChange={handleChange}
             className="pl-10"
+            placeholder="johndoe"
           />
         </div>
       </div>
@@ -82,6 +125,24 @@ export default function RegisterForm() {
             value={formData.email}
             onChange={handleChange}
             className="pl-10"
+            placeholder="john.doe@example.com"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="phone_number">Phone Number</Label>
+        <div className="relative">
+          <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            id="phone_number"
+            name="phone_number"
+            type="tel"
+            disabled={submitting}
+            value={formData.phone_number}
+            onChange={handleChange}
+            className="pl-10"
+            placeholder="+1 (555) 123-4567"
           />
         </div>
       </div>
@@ -99,14 +160,14 @@ export default function RegisterForm() {
             value={formData.password}
             onChange={handleChange}
             className="pl-10"
+            placeholder="••••••••"
           />
         </div>
       </div>
 
-      <Button type="submit" disabled={submitting} className="w-full">
+      <Button type="submit" disabled={submitting} className="w-full mt-2">
         {submitting ? "Registering..." : dict.signup.form.submit}
       </Button>
     </form>
   )
 }
-
