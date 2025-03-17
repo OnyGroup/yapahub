@@ -1,19 +1,27 @@
 "use client";
 import { useState, useEffect } from "react";
 import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardFooter,
-    CardHeader,
-    CardTitle,
-  } from "@/components/ui/card"
-  
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Badge } from "@/components/ui/badge"
 import { Pencil, Trash2, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface PipelineStage {
   id: number;
@@ -31,11 +39,15 @@ export default function PipelineStageManager() {
   const [newStageName, setNewStageName] = useState("");
   const [newStageDuration, setNewStageDuration] = useState(7);
   const [editingStage, setEditingStage] = useState<PipelineStage | null>(null);
+  const [openEditDialog, setOpenEditDialog] = useState(false);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [stageToDelete, setStageToDelete] = useState<number | null>(null);
   const { toast } = useToast();
 
-  // Fetch stages from the backend
+  useEffect(() => {
+    fetchStages();
+  }, []);
+
   const fetchStages = async () => {
     const token = localStorage.getItem("accessToken");
     try {
@@ -59,11 +71,6 @@ export default function PipelineStageManager() {
     }
   };
 
-  useEffect(() => {
-    fetchStages();
-  }, []);
-
-  // Handle stage creation
   const handleCreateStage = async () => {
     const token = localStorage.getItem("accessToken");
     try {
@@ -97,7 +104,46 @@ export default function PipelineStageManager() {
     }
   };
 
-  // Handle stage deletion
+  const handleSaveEdit = async () => {
+    if (!editingStage) return;
+
+    const token = localStorage.getItem("accessToken");
+    try {
+      const response = await fetch(`${API_BASE_URL}pipeline/pipeline-stages/${editingStage.id}/`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: editingStage.name,
+          description: editingStage.description,
+          order: editingStage.order,
+          expected_duration_days: editingStage.expected_duration_days,
+        }),
+      });
+
+      if (!response.ok) throw new Error("Failed to update stage");
+
+      toast({
+        variant: "default",
+        title: "Success",
+        description: "Stage updated successfully",
+      });
+
+      setOpenEditDialog(false);
+      setEditingStage(null);
+      fetchStages();
+    } catch (error) {
+      console.error("Error updating stage:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update stage",
+      });
+    }
+  };
+
   const handleDeleteStage = async () => {
     const token = localStorage.getItem("accessToken");
     if (!stageToDelete) return;
@@ -146,7 +192,10 @@ export default function PipelineStageManager() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => setEditingStage(stage)}
+                  onClick={() => {
+                    setEditingStage(stage);
+                    setOpenEditDialog(true);
+                  }}
                 >
                   <Pencil className="h-4 w-4" />
                 </Button>
@@ -203,6 +252,77 @@ export default function PipelineStageManager() {
             <Plus className="mr-2 h-4 w-4" /> Add Stage
           </Button>
         </div>
+
+        {/* Edit Dialog */}
+        <Dialog open={openEditDialog} onOpenChange={setOpenEditDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Stage</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground mb-1">Stage Name</h3>
+              <Input
+                placeholder="Enter Stage Name"
+                value={editingStage?.name || ""}
+                onChange={(e) =>
+                  setEditingStage((prev) => (prev ? { ...prev, name: e.target.value } : null))
+                }
+              />
+            </div>
+              
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground mb-1">Description</h3>
+              <Input
+                placeholder="Enter Description"
+                value={editingStage?.description || ""}
+                onChange={(e) =>
+                  setEditingStage((prev) => (prev ? { ...prev, description: e.target.value } : null))
+                }
+              />
+            </div>
+
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground mb-1">Order</h3>
+              <Input
+                type="number"
+                placeholder="Enter Order"
+                value={editingStage?.order || 0}
+                onChange={(e) =>
+                  setEditingStage((prev) =>
+                    prev ? { ...prev, order: Number(e.target.value) } : null
+                  )
+                }
+              />
+            </div>
+              
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground mb-1">
+                Expected Duration (days)
+              </h3>
+              <Input
+                type="number"
+                placeholder="Expected Duration (Days)"
+                value={editingStage?.expected_duration_days || 7}
+                onChange={(e) =>
+                  setEditingStage((prev) =>
+                    prev
+                      ? { ...prev, expected_duration_days: Number(e.target.value) }
+                      : null
+                  )
+                }
+              />
+            </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <Button variant="outline" onClick={() => setOpenEditDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveEdit}>Save</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );
