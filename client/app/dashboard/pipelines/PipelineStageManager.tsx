@@ -3,25 +3,39 @@ import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { Pencil, Trash2, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 interface PipelineStage {
   id: number;
@@ -37,11 +51,14 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 export default function PipelineStageManager() {
   const [stages, setStages] = useState<PipelineStage[]>([]);
   const [newStageName, setNewStageName] = useState("");
+  const [newStageDescription, setNewStageDescription] = useState("");
+  const [newStageOrder, setNewStageOrder] = useState(0);
   const [newStageDuration, setNewStageDuration] = useState(7);
   const [editingStage, setEditingStage] = useState<PipelineStage | null>(null);
   const [openEditDialog, setOpenEditDialog] = useState(false);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [stageToDelete, setStageToDelete] = useState<number | null>(null);
+  const [openAddDialog, setOpenAddDialog] = useState(false); // New state for add dialog
   const { toast } = useToast();
 
   useEffect(() => {
@@ -82,6 +99,8 @@ export default function PipelineStageManager() {
         },
         body: JSON.stringify({
           name: newStageName,
+          description: newStageDescription,
+          order: newStageOrder,
           expected_duration_days: newStageDuration,
         }),
       });
@@ -92,7 +111,10 @@ export default function PipelineStageManager() {
         description: "Stage created successfully",
       });
       setNewStageName("");
+      setNewStageDescription("");
+      setNewStageOrder(0);
       setNewStageDuration(7);
+      setOpenAddDialog(false); // Close the dialog
       fetchStages();
     } catch (error) {
       console.error("Error creating stage:", error);
@@ -106,7 +128,6 @@ export default function PipelineStageManager() {
 
   const handleSaveEdit = async () => {
     if (!editingStage) return;
-
     const token = localStorage.getItem("accessToken");
     try {
       const response = await fetch(`${API_BASE_URL}pipeline/pipeline-stages/${editingStage.id}/`, {
@@ -122,15 +143,12 @@ export default function PipelineStageManager() {
           expected_duration_days: editingStage.expected_duration_days,
         }),
       });
-
       if (!response.ok) throw new Error("Failed to update stage");
-
       toast({
         variant: "default",
         title: "Success",
         description: "Stage updated successfully",
       });
-
       setOpenEditDialog(false);
       setEditingStage(null);
       fetchStages();
@@ -235,23 +253,63 @@ export default function PipelineStageManager() {
           ))}
         </div>
 
-        {/* Add New Stage */}
-        <div className="space-y-2">
-          <Input
-            placeholder="Stage Name"
-            value={newStageName}
-            onChange={(e) => setNewStageName(e.target.value)}
-          />
-          <Input
-            type="number"
-            placeholder="Expected Duration (days)"
-            value={newStageDuration}
-            onChange={(e) => setNewStageDuration(Number(e.target.value))}
-          />
-          <Button onClick={handleCreateStage}>
-            <Plus className="mr-2 h-4 w-4" /> Add Stage
-          </Button>
-        </div>
+        {/* Add Stage Button and Dialog */}
+        <Dialog open={openAddDialog} onOpenChange={setOpenAddDialog}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" /> Add Stage
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add New Stage</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-1">Stage Name</h3>
+                <Input
+                  placeholder="Enter Stage Name"
+                  value={newStageName}
+                  onChange={(e) => setNewStageName(e.target.value)}
+                />
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-1">Description</h3>
+                <Input
+                  placeholder="Enter Description"
+                  value={newStageDescription}
+                  onChange={(e) => setNewStageDescription(e.target.value)}
+                />
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-1">Order</h3>
+                <Input
+                  type="number"
+                  placeholder="Enter Order"
+                  value={newStageOrder}
+                  onChange={(e) => setNewStageOrder(Number(e.target.value))}
+                />
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-1">
+                  Expected Duration (days)
+                </h3>
+                <Input
+                  type="number"
+                  placeholder="Expected Duration (Days)"
+                  value={newStageDuration}
+                  onChange={(e) => setNewStageDuration(Number(e.target.value))}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <Button variant="outline" onClick={() => setOpenAddDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleCreateStage}>Save</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Edit Dialog */}
         <Dialog open={openEditDialog} onOpenChange={setOpenEditDialog}>
@@ -260,60 +318,56 @@ export default function PipelineStageManager() {
               <DialogTitle>Edit Stage</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
-
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground mb-1">Stage Name</h3>
-              <Input
-                placeholder="Enter Stage Name"
-                value={editingStage?.name || ""}
-                onChange={(e) =>
-                  setEditingStage((prev) => (prev ? { ...prev, name: e.target.value } : null))
-                }
-              />
-            </div>
-              
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground mb-1">Description</h3>
-              <Input
-                placeholder="Enter Description"
-                value={editingStage?.description || ""}
-                onChange={(e) =>
-                  setEditingStage((prev) => (prev ? { ...prev, description: e.target.value } : null))
-                }
-              />
-            </div>
-
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground mb-1">Order</h3>
-              <Input
-                type="number"
-                placeholder="Enter Order"
-                value={editingStage?.order || 0}
-                onChange={(e) =>
-                  setEditingStage((prev) =>
-                    prev ? { ...prev, order: Number(e.target.value) } : null
-                  )
-                }
-              />
-            </div>
-              
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground mb-1">
-                Expected Duration (days)
-              </h3>
-              <Input
-                type="number"
-                placeholder="Expected Duration (Days)"
-                value={editingStage?.expected_duration_days || 7}
-                onChange={(e) =>
-                  setEditingStage((prev) =>
-                    prev
-                      ? { ...prev, expected_duration_days: Number(e.target.value) }
-                      : null
-                  )
-                }
-              />
-            </div>
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-1">Stage Name</h3>
+                <Input
+                  placeholder="Enter Stage Name"
+                  value={editingStage?.name || ""}
+                  onChange={(e) =>
+                    setEditingStage((prev) => (prev ? { ...prev, name: e.target.value } : null))
+                  }
+                />
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-1">Description</h3>
+                <Input
+                  placeholder="Enter Description"
+                  value={editingStage?.description || ""}
+                  onChange={(e) =>
+                    setEditingStage((prev) => (prev ? { ...prev, description: e.target.value } : null))
+                  }
+                />
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-1">Order</h3>
+                <Input
+                  type="number"
+                  placeholder="Enter Order"
+                  value={editingStage?.order || 0}
+                  onChange={(e) =>
+                    setEditingStage((prev) =>
+                      prev ? { ...prev, order: Number(e.target.value) } : null
+                    )
+                  }
+                />
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-1">
+                  Expected Duration (days)
+                </h3>
+                <Input
+                  type="number"
+                  placeholder="Expected Duration (Days)"
+                  value={editingStage?.expected_duration_days || 7}
+                  onChange={(e) =>
+                    setEditingStage((prev) =>
+                      prev
+                        ? { ...prev, expected_duration_days: Number(e.target.value) }
+                        : null
+                    )
+                  }
+                />
+              </div>
             </div>
             <div className="flex justify-end gap-2 mt-4">
               <Button variant="outline" onClick={() => setOpenEditDialog(false)}>

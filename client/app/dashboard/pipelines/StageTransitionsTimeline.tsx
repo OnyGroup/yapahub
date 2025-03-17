@@ -77,11 +77,11 @@ export default function StageTransitionsTimeline({ pipelineId }: StageTransition
                   <span className="font-semibold">{transition.to_stage_name}</span>
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  Entered: {new Date(transition.entry_date).toLocaleDateString()}
+                  Entered: {new Date(transition.entry_date).toLocaleString()}
                 </div>
                 {transition.exit_date && (
                   <div className="text-sm text-muted-foreground">
-                    Exited: {new Date(transition.exit_date).toLocaleDateString()}
+                    Exited: {new Date(transition.exit_date).toLocaleString()}
                   </div>
                 )}
                 <div className="text-sm">
