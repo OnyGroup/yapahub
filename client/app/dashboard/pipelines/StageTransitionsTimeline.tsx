@@ -81,12 +81,13 @@ export default function StageTransitionsTimeline({ pipelineId }: StageTransition
                 IconComponent = CheckCircle; // Completed transition
                 iconColor = "text-green-500";
               }
-
               return (
                 <TimelineItem key={transition.id} className="relative flex gap-3 pl-6 sm:pl-10">
                   {/* Dynamic Icon Marker */}
-                  <IconComponent className={`absolute left-0 top-3 h-4 w-4 ${iconColor}`} />
-
+                  <IconComponent 
+                    className={`absolute left-0 top-3 h-4 w-4 ${iconColor}`} 
+                    aria-label={transition.is_overdue ? "Overdue Transition" : "Completed Transition"}
+                  />
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="font-semibold">{transition.from_stage_name || "Initial"}</span>
