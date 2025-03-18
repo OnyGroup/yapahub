@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Timeline, TimelineItem } from "@/components/ui/timeline";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle } from "lucide-react";
+import { CheckCircle, AlertTriangle, MoveRight } from "lucide-react";
 
 interface StageTransition {
   id: number;
@@ -69,31 +69,51 @@ export default function StageTransitionsTimeline({ pipelineId }: StageTransition
           <p>Loading...</p>
         ) : transitions.length > 0 ? (
           <Timeline>
-            {transitions.map((transition) => (
-              <TimelineItem key={transition.id}>
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold">{transition.from_stage_name || "Initial"}</span>
-                  <span>→</span>
-                  <span className="font-semibold">{transition.to_stage_name}</span>
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  Entered: {new Date(transition.entry_date).toLocaleString()}
-                </div>
-                {transition.exit_date && (
-                  <div className="text-sm text-muted-foreground">
-                    Exited: {new Date(transition.exit_date).toLocaleString()}
+            {transitions.map((transition) => {
+              // Determine which icon to use based on status
+              let IconComponent = MoveRight; // Default icon for general transitions
+              let iconColor = "text-gray-500"; // Default color
+
+              if (transition.is_overdue) {
+                IconComponent = AlertTriangle; // Overdue transition
+                iconColor = "text-red-500";
+              } else if (!transition.is_active && transition.exit_date) {
+                IconComponent = CheckCircle; // Completed transition
+                iconColor = "text-green-500";
+              }
+              return (
+                <TimelineItem key={transition.id} className="relative flex gap-3 pl-6 sm:pl-10">
+                  {/* Dynamic Icon Marker */}
+                  <IconComponent 
+                    className={`absolute left-0 top-3 h-4 w-4 ${iconColor}`} 
+                    aria-label={transition.is_overdue ? "Overdue Transition" : "Completed Transition"}
+                  />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold">{transition.from_stage_name || "Initial"}</span>
+                      <span>→</span>
+                      <span className="font-semibold">{transition.to_stage_name}</span>
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      Entered: {new Date(transition.entry_date).toLocaleString()}
+                    </div>
+                    {transition.exit_date && (
+                      <div className="text-sm text-muted-foreground">
+                        Exited: {new Date(transition.exit_date).toLocaleString()}
+                      </div>
+                    )}
+                    <div className="text-sm">
+                      Duration: {transition.duration_readable}
+                      {transition.is_overdue && (
+                        <Badge variant="destructive" className="ml-2">
+                          Overdue
+                        </Badge>
+                      )}
+                    </div>
                   </div>
-                )}
-                <div className="text-sm">
-                  Duration: {transition.duration_readable}
-                  {transition.is_overdue && (
-                    <Badge variant="destructive" className="ml-2">
-                      Overdue
-                    </Badge>
-                  )}
-                </div>
-              </TimelineItem>
-            ))}
+                </TimelineItem>
+              );
+            })}
           </Timeline>
         ) : (
           <p>No transitions found.</p>

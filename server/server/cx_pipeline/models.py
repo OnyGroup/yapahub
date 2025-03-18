@@ -83,6 +83,9 @@ class CxPipeline(models.Model):
     last_updated = models.DateTimeField(auto_now=True)
     account_manager = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="managed_pipelines")
     stage_start_date = models.DateTimeField(default=timezone.now, help_text="Date when the current stage was entered")
+    expected_duration_days = models.PositiveIntegerField(
+        null=True, blank=True, help_text="Expected duration of the pipeline in days"
+    )
     
     def __str__(self):
         if self.stage:
@@ -102,7 +105,6 @@ class CxPipeline(models.Model):
         return self.current_stage_duration_days > self.stage.expected_duration_days
 
     def save(self, *args, **kwargs):
-        # Get user from kwargs if available
         user = kwargs.pop('user', None)
         creating = self.pk is None
         
