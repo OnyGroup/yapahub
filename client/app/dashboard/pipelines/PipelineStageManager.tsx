@@ -190,6 +190,45 @@ export default function PipelineStageManager() {
         <CardTitle>Manage Pipeline Stages</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+
+      {/* Add Stage Button and Dialog */}
+        <Dialog open={openAddDialog} onOpenChange={setOpenAddDialog}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" /> Add Stage
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add New Stage</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-1">Stage Name</h3>
+                <Input
+                  placeholder="Enter Stage Name"
+                  value={newStageName}
+                  onChange={(e) => setNewStageName(e.target.value)}
+                />
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-1">Description</h3>
+                <Input
+                  placeholder="Enter Description"
+                  value={newStageDescription}
+                  onChange={(e) => setNewStageDescription(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <Button variant="outline" onClick={() => setOpenAddDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleCreateStage}>Save</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         {/* Stage List */}
         <div className="space-y-2">
           {stages.map((stage) => (
@@ -243,44 +282,6 @@ export default function PipelineStageManager() {
             </div>
           ))}
         </div>
-
-        {/* Add Stage Button and Dialog */}
-        <Dialog open={openAddDialog} onOpenChange={setOpenAddDialog}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" /> Add Stage
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add New Stage</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-1">Stage Name</h3>
-                <Input
-                  placeholder="Enter Stage Name"
-                  value={newStageName}
-                  onChange={(e) => setNewStageName(e.target.value)}
-                />
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-1">Description</h3>
-                <Input
-                  placeholder="Enter Description"
-                  value={newStageDescription}
-                  onChange={(e) => setNewStageDescription(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="flex justify-end gap-2 mt-4">
-              <Button variant="outline" onClick={() => setOpenAddDialog(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleCreateStage}>Save</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
 
         {/* Edit Dialog */}
         <Dialog open={openEditDialog} onOpenChange={setOpenEditDialog}>
