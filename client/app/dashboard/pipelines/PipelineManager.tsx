@@ -43,6 +43,7 @@ import PipelineStageManager from "./PipelineStageManager";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import StageTransitionsTimeline from "./StageTransitionsTimeline";
 import { AlertTriangle } from "lucide-react";
+import OverdueStatusIndicator from "./OverdueStatusIndicator"; // Import the new component
 
 interface Pipeline {
   id: number;
@@ -53,6 +54,7 @@ interface Pipeline {
   is_current_stage_overdue: boolean;
   stage_name: string | null;
   stage: number | null;
+  expected_duration_days: number | null; // New field
 }
 
 interface Client {
@@ -73,6 +75,7 @@ export default function PipelineManager() {
   const [newNotes, setNewNotes] = useState("");
   const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
   const [selectedStageId, setSelectedStageId] = useState<number | null>(null);
+  const [newExpectedDuration, setNewExpectedDuration] = useState<number | null>(null); // New state
   const [editingPipeline, setEditingPipeline] = useState<Pipeline | null>(null);
   const [loading, setLoading] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
@@ -168,6 +171,7 @@ export default function PipelineManager() {
       client: selectedClientId,
       stage: selectedStageId,
       notes: newNotes,
+      expected_duration_days: newExpectedDuration || null, // Include expected duration
     });
     try {
       const response = await fetch(url, {
@@ -187,6 +191,7 @@ export default function PipelineManager() {
       setSelectedClientId(null);
       setSelectedStageId(null);
       setNewNotes("");
+      setNewExpectedDuration(null); // Reset expected duration
       setEditingPipeline(null);
       setOpenDialog(false);
       fetchPipelines();
@@ -233,7 +238,6 @@ export default function PipelineManager() {
         <TabsTrigger value="pipelines">Pipelines</TabsTrigger>
         <TabsTrigger value="stages">Stages</TabsTrigger>
       </TabsList>
-
       {/* Pipelines Tab */}
       <TabsContent value="pipelines">
         <div>
@@ -245,13 +249,13 @@ export default function PipelineManager() {
                 setSelectedClientId(null);
                 setSelectedStageId(null);
                 setNewNotes("");
+                setNewExpectedDuration(null);
                 setOpenDialog(true);
               }}
             >
               + Add Pipeline
             </Button>
           </div>
-
           {/* Pipeline Table */}
           <Table>
             <TableHeader>
@@ -270,11 +274,10 @@ export default function PipelineManager() {
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Badge>{pipeline.stage_name || "No Stage"}</Badge>
-                      {pipeline.is_current_stage_overdue && (
-                        <Badge variant="destructive" className="flex items-center gap-1">
-                          <AlertTriangle className="h-4 w-4" /> Overdue
-                        </Badge>
-                      )}
+                      <OverdueStatusIndicator
+                        startDate={pipeline.last_updated}
+                        expectedDurationDays={pipeline.expected_duration_days}
+                      />
                     </div>
                   </TableCell>
                   <TableCell>
@@ -298,6 +301,7 @@ export default function PipelineManager() {
                         setSelectedClientId(pipeline.client);
                         setSelectedStageId(pipeline.stage);
                         setNewNotes(pipeline.notes || "");
+                        setNewExpectedDuration(pipeline.expected_duration_days || null); // Pre-fill expected duration
                         setOpenDialog(true);
                       }}
                     >
@@ -340,7 +344,6 @@ export default function PipelineManager() {
               ))}
             </TableBody>
           </Table>
-
           {/* Dialog for Add/Edit */}
           <Dialog open={openDialog} onOpenChange={setOpenDialog}>
             <DialogContent>
@@ -382,6 +385,12 @@ export default function PipelineManager() {
                 value={newNotes}
                 onChange={(e) => setNewNotes(e.target.value)}
               />
+              <Input
+                type="number"
+                placeholder="Expected Duration (days)"
+                value={newExpectedDuration || ""}
+                onChange={(e) => setNewExpectedDuration(Number(e.target.value))}
+              />
               <Button onClick={handleCreateOrUpdate}>
                 {editingPipeline ? "Update" : "Create"}
               </Button>
@@ -389,7 +398,6 @@ export default function PipelineManager() {
           </Dialog>
         </div>
       </TabsContent>
-
       {/* Stages Tab */}
       <TabsContent value="stages">
         <PipelineStageManager />

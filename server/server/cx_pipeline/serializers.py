@@ -64,6 +64,9 @@ class CxPipelineSerializer(serializers.ModelSerializer):
     current_stage_duration = serializers.SerializerMethodField()
     stage_transitions = serializers.SerializerMethodField()
     is_current_stage_overdue = serializers.ReadOnlyField(source='is_stage_overdue')
+    expected_duration_days = serializers.IntegerField(
+        required=False, allow_null=True
+    )
     
     class Meta:
         model = CxPipeline
