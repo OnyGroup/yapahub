@@ -1,24 +1,58 @@
 "use client";
-
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Pencil, Trash2 } from "lucide-react";
 import NotesManager from "./NotesManager";
+import PipelineStageManager from "./PipelineStageManager";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import StageTransitionsTimeline from "./StageTransitionsTimeline";
+import { AlertTriangle } from "lucide-react";
 
 interface Pipeline {
   id: number;
   client_name: string;
-  status: number;
   last_updated: string;
   notes: string;
   client: number;
+  is_current_stage_overdue: boolean;
+  stage_name: string | null;
+  stage: number | null;
 }
 
 interface Client {
@@ -26,47 +60,35 @@ interface Client {
   name: string;
 }
 
-// Status mappings
-const statusLabels: Record<number, string> = {
-  1: "Lead",
-  2: "Negotiation",
-  3: "Onboarding",
-  4: "Active",
-  5: "Closed",
-};
-
-const statusColors: Record<number, string> = {
-  1: "bg-blue-500",
-  2: "bg-yellow-500",
-  3: "bg-purple-500",
-  4: "bg-green-500",
-  5: "bg-gray-500",
-};
+interface PipelineStage {
+  id: number;
+  name: string;
+}
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export default function PipelineManager() {
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
-  const [newStatus, setNewStatus] = useState<number>(1);
   const [newNotes, setNewNotes] = useState("");
-  const [selectedClientId, setSelectedClientId] = useState<number | null>(null); // Selected client ID
+  const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
+  const [selectedStageId, setSelectedStageId] = useState<number | null>(null);
   const [editingPipeline, setEditingPipeline] = useState<Pipeline | null>(null);
   const [loading, setLoading] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
-  const [selectedStatus, setSelectedStatus] = useState<string>("All");
-  const { toast } = useToast();
   const [openAlertDialog, setOpenAlertDialog] = useState(false);
+  const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>([]);
+  const { toast } = useToast();
 
   useEffect(() => {
     fetchPipelines();
     fetchClients();
+    fetchPipelineStages();
   }, []);
 
   const fetchPipelines = async () => {
     const token = localStorage.getItem("accessToken");
     setLoading(true);
-
     try {
       const response = await fetch(`${API_BASE_URL}pipeline/pipelines/`, {
         method: "GET",
@@ -75,9 +97,7 @@ export default function PipelineManager() {
           Authorization: `Bearer ${token}`,
         },
       });
-
       if (!response.ok) throw new Error("Failed to fetch pipelines");
-
       const data = await response.json();
       setPipelines(data);
     } catch (error) {
@@ -94,7 +114,6 @@ export default function PipelineManager() {
 
   const fetchClients = async () => {
     const token = localStorage.getItem("accessToken");
-
     try {
       const response = await fetch(`${API_BASE_URL}auth/clients/`, {
         method: "GET",
@@ -103,9 +122,7 @@ export default function PipelineManager() {
           Authorization: `Bearer ${token}`,
         },
       });
-
       if (!response.ok) throw new Error("Failed to fetch clients");
-
       const data = await response.json();
       setClients(data);
     } catch (error) {
@@ -118,19 +135,40 @@ export default function PipelineManager() {
     }
   };
 
+  const fetchPipelineStages = async () => {
+    const token = localStorage.getItem("accessToken");
+    try {
+      const response = await fetch(`${API_BASE_URL}pipeline/pipeline-stages/`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) throw new Error("Failed to fetch pipeline stages");
+      const data = await response.json();
+      setPipelineStages(data);
+    } catch (error) {
+      console.error("Error fetching pipeline stages:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to load pipeline stages",
+      });
+    }
+  };
+
   const handleCreateOrUpdate = async () => {
     const token = localStorage.getItem("accessToken");
     const url = editingPipeline
       ? `${API_BASE_URL}pipeline/pipelines/${editingPipeline.id}/`
       : `${API_BASE_URL}pipeline/pipelines/`;
-
     const method = editingPipeline ? "PATCH" : "POST";
     const body = JSON.stringify({
-      client: selectedClientId, // Use the selected client ID
-      status: newStatus,
+      client: selectedClientId,
+      stage: selectedStageId,
       notes: newNotes,
     });
-
     try {
       const response = await fetch(url, {
         method,
@@ -140,16 +178,14 @@ export default function PipelineManager() {
         },
         body,
       });
-
       if (!response.ok) throw new Error("Failed to save pipeline");
-
       toast({
         variant: "default",
         title: "Success",
         description: `Pipeline ${editingPipeline ? "updated" : "created"} successfully`,
       });
-      setSelectedClientId(null); // Reset selected client
-      setNewStatus(1);
+      setSelectedClientId(null);
+      setSelectedStageId(null);
       setNewNotes("");
       setEditingPipeline(null);
       setOpenDialog(false);
@@ -166,7 +202,6 @@ export default function PipelineManager() {
 
   const handleDelete = async (id: number) => {
     const token = localStorage.getItem("accessToken");
-
     try {
       const response = await fetch(`${API_BASE_URL}pipeline/pipelines/${id}/`, {
         method: "DELETE",
@@ -174,9 +209,7 @@ export default function PipelineManager() {
           Authorization: `Bearer ${token}`,
         },
       });
-
       if (!response.ok) throw new Error("Failed to delete pipeline");
-
       toast({
         variant: "default",
         title: "Success",
@@ -194,93 +227,91 @@ export default function PipelineManager() {
     }
   };
 
-  // Filtered pipelines based on selected status
-  const filteredPipelines = selectedStatus === "All" 
-    ? pipelines 
-    : pipelines.filter(pipeline => pipeline.status.toString() === selectedStatus);
-
   return (
-    <div>
-      {/* Add New Button & Status Filter Dropdown */}
-      <div className="mb-4 flex justify-between items-center">
-        <Button
-          onClick={() => {
-            setEditingPipeline(null); // Reset form for new entry
-            setSelectedClientId(null);
-            setNewStatus(1);
-            setNewNotes("");
-            setOpenDialog(true);
-          }}
-        >
-          + Add Pipeline
-        </Button>
+    <Tabs defaultValue="pipelines">
+      <TabsList>
+        <TabsTrigger value="pipelines">Pipelines</TabsTrigger>
+        <TabsTrigger value="stages">Stages</TabsTrigger>
+      </TabsList>
 
-        {/* DROPDOWN FILTER */}
-        <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Filter by Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="All">All</SelectItem>
-            {Object.entries(statusLabels).map(([key, label]) => (
-              <SelectItem key={key} value={key}>
-                {label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      {/* Pipelines Tab */}
+      <TabsContent value="pipelines">
+        <div>
+          {/* Add New Button */}
+          <div className="mb-4 flex justify-end">
+            <Button
+              onClick={() => {
+                setEditingPipeline(null);
+                setSelectedClientId(null);
+                setSelectedStageId(null);
+                setNewNotes("");
+                setOpenDialog(true);
+              }}
+            >
+              + Add Pipeline
+            </Button>
+          </div>
 
-      {/* Pipeline Table */}
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Client</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Last Updated</TableHead>
-            <TableHead>Notes</TableHead>
-            <TableHead>Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {filteredPipelines.map((pipeline) => (
-            <TableRow key={pipeline.id}>
-              <TableCell>{pipeline.client_name}</TableCell>
-              <TableCell>
-                <Badge className={statusColors[pipeline.status]}>{statusLabels[pipeline.status]}</Badge>
-              </TableCell>
-              <TableCell>{new Date(pipeline.last_updated).toLocaleDateString()}</TableCell>
-              <TableCell>
-                <NotesManager pipelineId={pipeline.id} initialNotes={pipeline.notes || ""} />
-              </TableCell>
-                <TableCell className="text-right flex gap-2 justify-end">
-                  <Button 
-                    variant="ghost" 
-                    size="icon"
-                    onClick={() => {
+          {/* Pipeline Table */}
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Client</TableHead>
+                <TableHead>Stage</TableHead>
+                <TableHead>Last Updated</TableHead>
+                <TableHead>Notes</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {pipelines.map((pipeline) => (
+                <TableRow key={pipeline.id}>
+                  <TableCell>{pipeline.client_name}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Badge>{pipeline.stage_name || "No Stage"}</Badge>
+                      {pipeline.is_current_stage_overdue && (
+                        <Badge variant="destructive" className="flex items-center gap-1">
+                          <AlertTriangle className="h-4 w-4" /> Overdue
+                        </Badge>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {new Date(pipeline.last_updated).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell>
+                    <NotesManager
+                      pipelineId={pipeline.id}
+                      initialNotes={pipeline.notes || ""}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <StageTransitionsTimeline pipelineId={pipeline.id} />
+                  </TableCell>
+                  <TableCell className="text-right flex gap-2 justify-end">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
                         setEditingPipeline(pipeline);
-                        setSelectedClientId(Number(pipeline.client)); // Pre-fill client
-                        setNewStatus(pipeline.status);
+                        setSelectedClientId(pipeline.client);
+                        setSelectedStageId(pipeline.stage);
                         setNewNotes(pipeline.notes || "");
                         setOpenDialog(true);
                       }}
                     >
                       <Pencil className="h-5 w-5" />
                     </Button>
-                    {/* Update the AlertDialog component */}
                     <AlertDialog open={openAlertDialog} onOpenChange={setOpenAlertDialog}>
                       <AlertDialogTrigger asChild>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="text-red-500"
-                        onClick={(e) => {
-                          e.stopPropagation(); // Prevent event bubbling
-                          setOpenAlertDialog(true); // Open the dialog
-                        }}
-                      >
-                        <Trash2 className="h-5 w-5" />
-                      </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-red-500"
+                        >
+                          <Trash2 className="h-5 w-5" />
+                        </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
@@ -290,11 +321,13 @@ export default function PipelineManager() {
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel onClick={() => setOpenAlertDialog(false)}>Cancel</AlertDialogCancel>
+                          <AlertDialogCancel onClick={() => setOpenAlertDialog(false)}>
+                            Cancel
+                          </AlertDialogCancel>
                           <AlertDialogAction
                             onClick={async () => {
-                              await handleDelete(pipeline.id); // Call the delete function
-                              setOpenAlertDialog(false); // Close the dialog after deletion
+                              await handleDelete(pipeline.id);
+                              setOpenAlertDialog(false);
                             }}
                           >
                             Delete
@@ -302,53 +335,65 @@ export default function PipelineManager() {
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
 
-      {/* Dialog for Add/Edit */}
-      <Dialog open={openDialog} onOpenChange={setOpenDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{editingPipeline ? "Edit Pipeline" : "Add Pipeline"}</DialogTitle>
-            </DialogHeader>
-          <Select
-            value={selectedClientId?.toString()}
-            onValueChange={(value) => setSelectedClientId(Number(value))}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select Client" />
-            </SelectTrigger>
-            <SelectContent>
-              {clients.map((client) => (
-                <SelectItem key={client.id} value={client.id.toString()}>
-                  {client.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={newStatus.toString()} onValueChange={(value) => setNewStatus(Number(value))}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select Status" />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(statusLabels).map(([key, label]) => (
-                <SelectItem key={key} value={key}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Input
-            placeholder="Add Notes"
-            value={newNotes}
-            onChange={(e) => setNewNotes(e.target.value)}
-          />
-          <Button onClick={handleCreateOrUpdate}>{editingPipeline ? "Update" : "Create"}</Button>
-        </DialogContent>
-      </Dialog>
-    </div>
+          {/* Dialog for Add/Edit */}
+          <Dialog open={openDialog} onOpenChange={setOpenDialog}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{editingPipeline ? "Edit Pipeline" : "Add Pipeline"}</DialogTitle>
+              </DialogHeader>
+              <Select
+                value={selectedClientId?.toString()}
+                onValueChange={(value) => setSelectedClientId(Number(value))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Client" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clients.map((client) => (
+                    <SelectItem key={client.id} value={client.id.toString()}>
+                      {client.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={selectedStageId?.toString()}
+                onValueChange={(value) => setSelectedStageId(Number(value))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Stage" />
+                </SelectTrigger>
+                <SelectContent>
+                  {pipelineStages.map((stage) => (
+                    <SelectItem key={stage.id} value={stage.id.toString()}>
+                      {stage.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                placeholder="Add Notes"
+                value={newNotes}
+                onChange={(e) => setNewNotes(e.target.value)}
+              />
+              <Button onClick={handleCreateOrUpdate}>
+                {editingPipeline ? "Update" : "Create"}
+              </Button>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </TabsContent>
+
+      {/* Stages Tab */}
+      <TabsContent value="stages">
+        <PipelineStageManager />
+      </TabsContent>
+    </Tabs>
   );
 }

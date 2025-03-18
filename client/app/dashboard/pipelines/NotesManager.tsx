@@ -1,10 +1,11 @@
 "use client";
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import NoteHistory from "./NoteHistory";
 
 interface NotesManagerProps {
   pipelineId: number;
@@ -54,17 +55,30 @@ export default function NotesManager({ pipelineId, initialNotes }: NotesManagerP
       <DialogTrigger asChild>
         <Button variant="outline">Manage Notes</Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>Manage Notes</DialogTitle>
         </DialogHeader>
-        <Textarea
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="Enter notes here..."
-          className="h-32"
-        />
-        <Button onClick={handleSaveNotes}>Save Notes</Button>
+        <Tabs defaultValue="edit">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="edit">Edit Notes</TabsTrigger>
+            <TabsTrigger value="history">Note History</TabsTrigger>
+          </TabsList>
+          <TabsContent value="edit">
+            <Textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Enter notes here..."
+              className="h-32"
+            />
+            <Button onClick={handleSaveNotes} className="mt-4">
+              Save Notes
+            </Button>
+          </TabsContent>
+          <TabsContent value="history">
+            <NoteHistory pipelineId={pipelineId} />
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );
