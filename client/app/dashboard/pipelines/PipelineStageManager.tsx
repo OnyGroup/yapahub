@@ -52,8 +52,6 @@ export default function PipelineStageManager() {
   const [stages, setStages] = useState<PipelineStage[]>([]);
   const [newStageName, setNewStageName] = useState("");
   const [newStageDescription, setNewStageDescription] = useState("");
-  const [newStageOrder, setNewStageOrder] = useState(0);
-  const [newStageDuration, setNewStageDuration] = useState(7);
   const [editingStage, setEditingStage] = useState<PipelineStage | null>(null);
   const [openEditDialog, setOpenEditDialog] = useState(false);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
@@ -100,8 +98,6 @@ export default function PipelineStageManager() {
         body: JSON.stringify({
           name: newStageName,
           description: newStageDescription,
-          order: newStageOrder,
-          expected_duration_days: newStageDuration,
         }),
       });
       if (!response.ok) throw new Error("Failed to create stage");
@@ -112,8 +108,6 @@ export default function PipelineStageManager() {
       });
       setNewStageName("");
       setNewStageDescription("");
-      setNewStageOrder(0);
-      setNewStageDuration(7);
       setOpenAddDialog(false); // Close the dialog
       fetchStages();
     } catch (error) {
@@ -202,9 +196,6 @@ export default function PipelineStageManager() {
             <div key={stage.id} className="flex items-center justify-between p-2 border rounded">
               <div>
                 <h3 className="font-semibold">{stage.name}</h3>
-                <p className="text-sm text-muted-foreground">
-                  Duration: {stage.expected_duration_days} days
-                </p>
               </div>
               <div className="flex gap-2">
                 <Button
@@ -281,26 +272,6 @@ export default function PipelineStageManager() {
                   onChange={(e) => setNewStageDescription(e.target.value)}
                 />
               </div>
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-1">Order</h3>
-                <Input
-                  type="number"
-                  placeholder="Enter Order"
-                  value={newStageOrder}
-                  onChange={(e) => setNewStageOrder(Number(e.target.value))}
-                />
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-1">
-                  Expected Duration (days)
-                </h3>
-                <Input
-                  type="number"
-                  placeholder="Expected Duration (Days)"
-                  value={newStageDuration}
-                  onChange={(e) => setNewStageDuration(Number(e.target.value))}
-                />
-              </div>
             </div>
             <div className="flex justify-end gap-2 mt-4">
               <Button variant="outline" onClick={() => setOpenAddDialog(false)}>
@@ -335,36 +306,6 @@ export default function PipelineStageManager() {
                   value={editingStage?.description || ""}
                   onChange={(e) =>
                     setEditingStage((prev) => (prev ? { ...prev, description: e.target.value } : null))
-                  }
-                />
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-1">Order</h3>
-                <Input
-                  type="number"
-                  placeholder="Enter Order"
-                  value={editingStage?.order || 0}
-                  onChange={(e) =>
-                    setEditingStage((prev) =>
-                      prev ? { ...prev, order: Number(e.target.value) } : null
-                    )
-                  }
-                />
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-1">
-                  Expected Duration (days)
-                </h3>
-                <Input
-                  type="number"
-                  placeholder="Expected Duration (Days)"
-                  value={editingStage?.expected_duration_days || 7}
-                  onChange={(e) =>
-                    setEditingStage((prev) =>
-                      prev
-                        ? { ...prev, expected_duration_days: Number(e.target.value) }
-                        : null
-                    )
                   }
                 />
               </div>
