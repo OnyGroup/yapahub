@@ -188,13 +188,23 @@ export default function PipelineManager() {
         title: "Success",
         description: `Pipeline ${editingPipeline ? "updated" : "created"} successfully`,
       });
+
+      // Update pipelines state directly instead of refetching
+      setPipelines((prevPipelines) =>
+        prevPipelines.map((p) =>
+          p.id === editingPipeline?.id
+            ? { ...p, notes: newNotes, stage: selectedStageId }
+            : p
+        )
+      );
+
       setSelectedClientId(null);
       setSelectedStageId(null);
       setNewNotes("");
       setNewExpectedDuration(null); // Reset expected duration
       setEditingPipeline(null);
       setOpenDialog(false);
-      fetchPipelines();
+      // fetchPipelines();
     } catch (error) {
       console.error("Error saving pipeline:", error);
       toast({
@@ -284,10 +294,17 @@ export default function PipelineManager() {
                     {new Date(pipeline.last_updated).toLocaleDateString()}
                   </TableCell>
                   <TableCell>
-                    <NotesManager
-                      pipelineId={pipeline.id}
-                      initialNotes={pipeline.notes || ""}
-                    />
+                  <NotesManager
+                    pipelineId={pipeline.id}
+                    initialNotes={pipeline.notes || ""}
+                    onNotesUpdated={(pipelineId, newNotes) => {
+                      setPipelines((prevPipelines) =>
+                        prevPipelines.map((p) =>
+                          p.id === pipelineId ? { ...p, notes: newNotes } : p
+                        )
+                      );
+                    }}
+                  />
                   </TableCell>
                   <TableCell>
                     <StageTransitionsTimeline pipelineId={pipeline.id} />
