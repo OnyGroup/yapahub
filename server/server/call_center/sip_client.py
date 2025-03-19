@@ -4,7 +4,7 @@ from decouple import config
 
 SIP_USERNAME = config('SIP_USERNAME')
 SIP_PASSWORD = config('SIP_PASSWORD')
-SIP_DOMAIN = "sandbox.sip.africastalking.com"
+SIP_DOMAIN = "ke.sip.africastalking.com"
 
 class MyAccount(pj.Account):
     def onRegState(self, prm):
@@ -37,11 +37,24 @@ class SIPClient:
         print("SIP account created and registered.")
 
     def make_call(self, to_number):
+        # Register the current thread with pjsua2
+        try:
+            pj.Endpoint.instance().utilThreadRegister("PythonThread")
+        except Exception as e:
+            # Thread might already be registered
+            print(f"Thread registration warning: {str(e)}")
+            pass
+        
         call = pj.Call(self.account)
         prm = pj.CallOpParam()
         prm.opt.audioCount = 1
         call.makeCall(f"sip:{to_number}@{SIP_DOMAIN}", prm)
         print(f"Calling {to_number} via SIP...")
+        
+        # add a small delay to ensure the call starts
+        # before Django destroys the thread
+        import time
+        time.sleep(1)
 
 if __name__ == "__main__":
     client = SIPClient()

@@ -74,10 +74,11 @@ class MakeCallView(APIView):
                 # Get active callback URL
                 callback_url = CallbackURL.objects.filter(is_active=True).first()
                 if not callback_url:
-                    return Response(
-                        {"error": "No active callback URL configured"},
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
+                    callback_url = settings.CALLBACK_URL
+                    # return Response(
+                    #     {"error": "No active callback URL configured"},
+                    #     status=status.HTTP_400_BAD_REQUEST
+                    # )
 
                 # **SIP CALL LOGIC**
                 if use_sip:
@@ -88,7 +89,8 @@ class MakeCallView(APIView):
                         call_log = CallLog.objects.create(
                             session_id=f"SIP-{phone_number}",
                             phone_number=phone_number,
-                            status="initiated_sip"
+                            status="initiated_sip",
+                            caller=request.user  # Add this line to set the caller
                         )
 
                         return Response({
@@ -116,7 +118,8 @@ class MakeCallView(APIView):
                 call_log = CallLog.objects.create(
                     session_id=response['entries'][0]['sessionId'],
                     phone_number=phone_number,
-                    status="queued"
+                    status="queued",
+                    caller=request.user 
                 )
 
                 return Response({

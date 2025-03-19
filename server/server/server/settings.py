@@ -18,9 +18,10 @@ SECRET_KEY = config('SECRET_KEY')
 DEBUG = True
 
 # Africa's Talking API configuration
-AFRICASTALKING_USERNAME = 'sandbox'
+CALLBACK_URL = config('AFRICASTALKING_CALLBACK_URL')
+AFRICASTALKING_USERNAME = 'test_murithi'
 AFRICASTALKING_API_KEY = config('AFRICASTALKING_API_KEY')
-AFRICASTALKING_CALLER_ID = "sip:test_KE.murithi.@sandbox.sip.africastalking.com"
+AFRICASTALKING_CALLER_ID = "+254711082986"
 SIP_USERNAME = config("SIP_USERNAME")
 SIP_PASSWORD = config("SIP_PASSWORD")
 
@@ -69,7 +70,7 @@ INSTALLED_APPS = [
     'payments',
     'django_extensions',
     'channels',
-    # 'call_center',
+    'call_center',
     'cx_pipeline',
 
     # third party apps
