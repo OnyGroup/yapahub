@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,14 +10,22 @@ import NoteHistory from "./NoteHistory";
 interface NotesManagerProps {
   pipelineId: number;
   initialNotes: string;
+  onNotesUpdated: (pipelineId: number, newNotes: string) => void; // Callback to notify parent
 }
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
-export default function NotesManager({ pipelineId, initialNotes }: NotesManagerProps) {
+export default function NotesManager({ pipelineId, initialNotes, onNotesUpdated }: NotesManagerProps) {
   const [notes, setNotes] = useState(initialNotes);
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
+
+  // Reset notes when the dialog is opened or initialNotes changes
+  useEffect(() => {
+    if (open) {
+      setNotes(initialNotes); // Reset to the latest initialNotes value
+    }
+  }, [open, initialNotes]);
 
   const handleSaveNotes = async () => {
     const token = localStorage.getItem("accessToken");
@@ -34,12 +42,15 @@ export default function NotesManager({ pipelineId, initialNotes }: NotesManagerP
 
       if (!response.ok) throw new Error("Failed to update notes");
 
+      // Notify the parent component of the updated notes
+      onNotesUpdated(pipelineId, notes);
+
       toast({
         variant: "default",
         title: "Success",
         description: "Notes updated successfully",
       });
-      setOpen(false);
+      setOpen(false); // Close the dialog
     } catch (error) {
       console.error("Error updating notes:", error);
       toast({

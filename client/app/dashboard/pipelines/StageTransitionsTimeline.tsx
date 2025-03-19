@@ -31,33 +31,38 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 export default function StageTransitionsTimeline({ pipelineId }: StageTransitionsTimelineProps) {
   const [transitions, setTransitions] = useState<StageTransition[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
 
+  // Function to fetch transitions
+  const fetchTransitions = async () => {
+    const token = localStorage.getItem("accessToken");
+    try {
+      const response = await fetch(`${API_BASE_URL}pipeline/pipelines/${pipelineId}/transitions/`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) throw new Error("Failed to fetch transitions");
+      const data = await response.json();
+      setTransitions(data);
+    } catch (error) {
+      console.error("Error fetching transitions:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch transitions when dialog opens
   useEffect(() => {
-    const fetchTransitions = async () => {
-      const token = localStorage.getItem("accessToken");
-      try {
-        const response = await fetch(`${API_BASE_URL}pipeline/pipelines/${pipelineId}/transitions/`, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        if (!response.ok) throw new Error("Failed to fetch transitions");
-        const data = await response.json();
-        setTransitions(data);
-      } catch (error) {
-        console.error("Error fetching transitions:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchTransitions();
-  }, [pipelineId]);
+    if (isOpen) {
+      fetchTransitions();
+    }
+  }, [isOpen, pipelineId]);
 
   return (
-    <Dialog>
+    <Dialog open={isOpen} onOpenChange={(open) => setIsOpen(open)}>
       <DialogTrigger asChild>
         <button className="text-blue-500 hover:underline">View Transitions</button>
       </DialogTrigger>
@@ -81,11 +86,12 @@ export default function StageTransitionsTimeline({ pipelineId }: StageTransition
                 IconComponent = CheckCircle; // Completed transition
                 iconColor = "text-green-500";
               }
+
               return (
                 <TimelineItem key={transition.id} className="relative flex gap-3 pl-6 sm:pl-10">
                   {/* Dynamic Icon Marker */}
-                  <IconComponent 
-                    className={`absolute left-0 top-3 h-4 w-4 ${iconColor}`} 
+                  <IconComponent
+                    className={`absolute left-0 top-3 h-4 w-4 ${iconColor}`}
                     aria-label={transition.is_overdue ? "Overdue Transition" : "Completed Transition"}
                   />
                   <div>

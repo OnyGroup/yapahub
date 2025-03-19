@@ -188,13 +188,23 @@ export default function PipelineManager() {
         title: "Success",
         description: `Pipeline ${editingPipeline ? "updated" : "created"} successfully`,
       });
+
+      // Update pipelines state directly instead of refetching
+      setPipelines((prevPipelines) =>
+        prevPipelines.map((p) =>
+          p.id === editingPipeline?.id
+            ? { ...p, notes: newNotes, stage: selectedStageId }
+            : p
+        )
+      );
+
       setSelectedClientId(null);
       setSelectedStageId(null);
       setNewNotes("");
       setNewExpectedDuration(null); // Reset expected duration
       setEditingPipeline(null);
       setOpenDialog(false);
-      fetchPipelines();
+      // fetchPipelines();
     } catch (error) {
       console.error("Error saving pipeline:", error);
       toast({
@@ -284,10 +294,17 @@ export default function PipelineManager() {
                     {new Date(pipeline.last_updated).toLocaleDateString()}
                   </TableCell>
                   <TableCell>
-                    <NotesManager
-                      pipelineId={pipeline.id}
-                      initialNotes={pipeline.notes || ""}
-                    />
+                  <NotesManager
+                    pipelineId={pipeline.id}
+                    initialNotes={pipeline.notes || ""}
+                    onNotesUpdated={(pipelineId, newNotes) => {
+                      setPipelines((prevPipelines) =>
+                        prevPipelines.map((p) =>
+                          p.id === pipelineId ? { ...p, notes: newNotes } : p
+                        )
+                      );
+                    }}
+                  />
                   </TableCell>
                   <TableCell>
                     <StageTransitionsTimeline pipelineId={pipeline.id} />
@@ -350,50 +367,75 @@ export default function PipelineManager() {
               <DialogHeader>
                 <DialogTitle>{editingPipeline ? "Edit Pipeline" : "Add Pipeline"}</DialogTitle>
               </DialogHeader>
-              <Select
-                value={selectedClientId?.toString()}
-                onValueChange={(value) => setSelectedClientId(Number(value))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Client" />
-                </SelectTrigger>
-                <SelectContent>
-                  {clients.map((client) => (
-                    <SelectItem key={client.id} value={client.id.toString()}>
-                      {client.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select
-                value={selectedStageId?.toString()}
-                onValueChange={(value) => setSelectedStageId(Number(value))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Stage" />
-                </SelectTrigger>
-                <SelectContent>
-                  {pipelineStages.map((stage) => (
-                    <SelectItem key={stage.id} value={stage.id.toString()}>
-                      {stage.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Input
-                placeholder="Add Notes"
-                value={newNotes}
-                onChange={(e) => setNewNotes(e.target.value)}
-              />
-              <Input
-                type="number"
-                placeholder="Expected Duration (days)"
-                value={newExpectedDuration || ""}
-                onChange={(e) => setNewExpectedDuration(Number(e.target.value))}
-              />
-              <Button onClick={handleCreateOrUpdate}>
-                {editingPipeline ? "Update" : "Create"}
-              </Button>
+              <div className="space-y-4">
+                {/* Client Selection */}
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground mb-1">Client</h3>
+                <Select
+                  value={selectedClientId?.toString()}
+                  onValueChange={(value) => setSelectedClientId(Number(value))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Client" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clients.map((client) => (
+                      <SelectItem key={client.id} value={client.id.toString()}>
+                        {client.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {/* Select Stage */}
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-1">Stages</h3>
+                <Select
+                  value={selectedStageId?.toString()}
+                  onValueChange={(value) => setSelectedStageId(Number(value))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Stage" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {pipelineStages.map((stage) => (
+                      <SelectItem key={stage.id} value={stage.id.toString()}>
+                        {stage.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Notes Input */}
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-1">Notes</h3>
+                <Input
+                  placeholder="Add Notes"
+                  value={newNotes}
+                  onChange={(e) => setNewNotes(e.target.value)}
+                />
+                </div>
+
+              {/* Expected Duration (Days) */}
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-1">Expected Duration (Days)</h3>
+                <Input
+                  type="number"
+                  placeholder="Expected Duration (days)"
+                  value={newExpectedDuration || ""}
+                  onChange={(e) => setNewExpectedDuration(Number(e.target.value))}
+                />
+              </div>
+
+              {/* Submit Button */}
+              <div className="flex justify-end">
+                <Button onClick={handleCreateOrUpdate}>
+                  {editingPipeline ? "Update" : "Create"}
+                </Button>
+              </div>
+              </div>
             </DialogContent>
           </Dialog>
         </div>
