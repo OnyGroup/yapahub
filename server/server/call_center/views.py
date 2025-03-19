@@ -13,6 +13,7 @@ from .serializers import (
     MakeCallSerializer, CallStatusSerializer
 )
 from .sip_client import SIPClient
+import uuid
 
 User = get_user_model()
 africastalking.initialize(settings.AFRICASTALKING_USERNAME, settings.AFRICASTALKING_API_KEY)
@@ -86,11 +87,14 @@ class MakeCallView(APIView):
                         sip_client = SIPClient()
                         sip_client.make_call(phone_number)
 
+                        # Generate a unique session ID using the phone number and a UUID
+                        unique_session_id = f"SIP-{phone_number}-{uuid.uuid4().hex[:8]}"
+
                         call_log = CallLog.objects.create(
-                            session_id=f"SIP-{phone_number}",
+                            session_id=unique_session_id,
                             phone_number=phone_number,
                             status="initiated_sip",
-                            caller=request.user  # Add this line to set the caller
+                            caller=request.user  # set the caller
                         )
 
                         return Response({
