@@ -18,7 +18,7 @@ const Header: React.FC = () => {
   }
 
   const handleJoinWaitlist = () => {
-    router.push("/contact")
+    router.push("/cx/contact")
   }
 
   return (
