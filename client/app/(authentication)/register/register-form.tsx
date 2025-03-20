@@ -26,7 +26,7 @@ export default function RegisterForm() {
     first_name: "",
     last_name: "",
     phone_number: "",
-    access_level: "business_owner" // Set default access level to business_owner
+    access_level: "business_owner" // Sets default access level to business_owner
   })
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -43,7 +43,7 @@ export default function RegisterForm() {
       if (response) {
         toast({
           title: "Registration Successful",
-          description: "Your business owner account has been created successfully.",
+          description: "Your account has been created successfully.",
           variant: "default",
         })
         

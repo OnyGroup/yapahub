@@ -13,6 +13,8 @@ from .serializers import (
     MakeCallSerializer, CallStatusSerializer
 )
 from .sip_client import SIPClient
+import uuid
+from datetime import datetime
 
 User = get_user_model()
 africastalking.initialize(settings.AFRICASTALKING_USERNAME, settings.AFRICASTALKING_API_KEY)
@@ -74,10 +76,11 @@ class MakeCallView(APIView):
                 # Get active callback URL
                 callback_url = CallbackURL.objects.filter(is_active=True).first()
                 if not callback_url:
-                    return Response(
-                        {"error": "No active callback URL configured"},
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
+                    callback_url = settings.CALLBACK_URL
+                    # return Response(
+                    #     {"error": "No active callback URL configured"},
+                    #     status=status.HTTP_400_BAD_REQUEST
+                    # )
 
                 # **SIP CALL LOGIC**
                 if use_sip:
@@ -85,10 +88,15 @@ class MakeCallView(APIView):
                         sip_client = SIPClient()
                         sip_client.make_call(phone_number)
 
+                        # Generate a unique session ID with timestamp
+                        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+                        unique_session_id = f"SIP-{phone_number}-{timestamp}-{uuid.uuid4().hex[:8]}"
+
                         call_log = CallLog.objects.create(
-                            session_id=f"SIP-{phone_number}",
+                            session_id=unique_session_id,
                             phone_number=phone_number,
-                            status="initiated_sip"
+                            status="initiated_sip",
+                            caller=request.user  # set the caller
                         )
 
                         return Response({
@@ -116,7 +124,8 @@ class MakeCallView(APIView):
                 call_log = CallLog.objects.create(
                     session_id=response['entries'][0]['sessionId'],
                     phone_number=phone_number,
-                    status="queued"
+                    status="queued",
+                    caller=request.user 
                 )
 
                 return Response({

@@ -30,7 +30,7 @@ export default function HomePage() {
             </p>
             <div className="flex justify-center">
               <Link
-                href="/contact"
+                href="/cx/contact"
                 className="group px-8 py-4 bg-[#FF4500] text-white rounded-lg font-semibold hover:bg-[#E63F00] transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#FF4500] focus:ring-offset-2 focus:ring-offset-[#020220] shadow-lg shadow-[#FF4500]/20 hover:shadow-xl hover:shadow-[#FF4500]/30 transform hover:-translate-y-1"
                 aria-label="Join our waitlist"
               >
@@ -163,7 +163,7 @@ export default function HomePage() {
               among the first to experience the future of customer engagement.
             </p>
             <Link
-              href="/contact"
+              href="/cx/contact"
               className="group inline-flex items-center px-8 py-4 bg-white text-[#FF4500] rounded-lg font-semibold hover:bg-gray-100 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-[#FF4500] shadow-md hover:shadow-lg transform hover:-translate-y-1"
               aria-label="Join our waitlist"
             >
