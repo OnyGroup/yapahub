@@ -18,7 +18,7 @@ SECRET_KEY = config('SECRET_KEY')
 DEBUG = True
 
 # Africa's Talking API configuration
-CALLBACK_URL = config('AFRICASTALKING_CALLBACK_URL', default='https://api.africastalking.com/test/voice')
+CALLBACK_URL = config('AFRICASTALKING_CALLBACK_URL', default='https://voice.africastalking.com/call')
 AFRICASTALKING_USERNAME = 'test_murithi'
 AFRICASTALKING_API_KEY = config('AFRICASTALKING_API_KEY', default='atsk_dbac1ed32faf9674c25f94b68e56ef00afdaaf517a40cec8bed049f242a693d4a742ef16')
 AFRICASTALKING_CALLER_ID = "+254711082986"
@@ -70,7 +70,7 @@ INSTALLED_APPS = [
     'payments',
     'django_extensions',
     'channels',
-    # 'call_center',
+    'call_center',
     'cx_pipeline',
 
     # third party apps
