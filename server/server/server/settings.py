@@ -20,7 +20,7 @@ DEBUG = True
 # Africa's Talking API configuration
 CALLBACK_URL = config('AFRICASTALKING_CALLBACK_URL', default='https://voice.africastalking.com/call')
 AFRICASTALKING_USERNAME = 'test_murithi'
-AFRICASTALKING_API_KEY = config('AFRICASTALKING_API_KEY', default='atsk_dbac1ed32faf9674c25f94b68e56ef00afdaaf517a40cec8bed049f242a693d4a742ef16')
+AFRICASTALKING_API_KEY = config('AFRICASTALKING_API_KEY')
 AFRICASTALKING_CALLER_ID = "+254711082986"
 SIP_USERNAME = config('SIP_USERNAME', default='test_murithi')
 SIP_PASSWORD = config('SIP_PASSWORD', default='123456')

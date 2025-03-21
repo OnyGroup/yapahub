@@ -12,8 +12,6 @@ from .serializers import (
     CallLogSerializer, CallbackURLSerializer, PhoneNumberSerializer,
     MakeCallSerializer, CallStatusSerializer
 )
-from datetime import datetime
-import uuid
 
 User = get_user_model()
 
