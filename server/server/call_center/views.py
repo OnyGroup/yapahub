@@ -12,6 +12,8 @@ from .serializers import (
     CallLogSerializer, CallbackURLSerializer, PhoneNumberSerializer,
     MakeCallSerializer, CallStatusSerializer
 )
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
 
 User = get_user_model()
 
@@ -120,6 +122,17 @@ class CallStatusWebhook(APIView):
                         call_log.calculate_duration()
 
                 call_log.save()
+
+                # Send real-time update to WebSocket
+                channel_layer = get_channel_layer()
+                async_to_sync(channel_layer.group_send)(
+                    f'call_status_{session_id}',
+                    {
+                        'type': 'call_status_message',
+                        'message': call_status
+                    }
+                )
+
                 return Response({"status": "success"}, status=status.HTTP_200_OK)
 
             except CallLog.DoesNotExist:
