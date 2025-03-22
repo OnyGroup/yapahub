@@ -15,5 +15,4 @@ urlpatterns = [
     path('make-call/', MakeCallView.as_view(), name='make-call'),
     path('webhook/call-status/', CallStatusWebhook.as_view(), name='call-status-webhook'),
     path('user/call-history/', UserCallHistoryView.as_view(), name='user-call-history'),
-    path('make-sip-call/', MakeCallView.as_view(), name='make-sip-call'),
 ]

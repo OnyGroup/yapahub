@@ -4,7 +4,8 @@ from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.auth import AuthMiddlewareStack
 from channels.layers import get_channel_layer
 from inbox.routing import websocket_urlpatterns
-from inbox.middleware import JWTAuthMiddleware 
+from inbox.middleware import JWTAuthMiddleware
+from call_center.routing import websocket_urlpatterns
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'server.settings')
 
