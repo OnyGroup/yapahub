@@ -1,8 +1,7 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from 'react';
-import io from 'socket.io-client';
-import axios from 'axios';
+import React, { useEffect, useState, useRef } from "react";
+import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { Table } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
@@ -20,16 +19,17 @@ interface CallLog {
 
 const CallManager: React.FC = () => {
   const [callLogs, setCallLogs] = useState<CallLog[]>([]);
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const socket = useRef<any>(null);
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const socket = useRef<WebSocket | null>(null);
 
   useEffect(() => {
+    // Fetch call logs
     const fetchCallLogs = async () => {
       try {
-        const response = await axios.get('http://127.0.0.1:8000/call-center/user/call-history/', {
+        const response = await axios.get("http://127.0.0.1:8000/call-center/user/call-history/", {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
           },
         });
         setCallLogs(response.data);
@@ -39,65 +39,66 @@ const CallManager: React.FC = () => {
           setSessionId(response.data[0].session_id);
         }
       } catch (error) {
-        console.error('Error fetching call logs:', error);
+        console.error("Error fetching call logs:", error);
       }
     };
 
     fetchCallLogs();
+  }, []);
 
-    if (sessionId) {
-      // Set up WebSocket connection
-      socket.current = io(`ws://${window.location.hostname}:8000/ws/call_status/${sessionId}/`, {
-        path: '/ws/call_status/',
-        transports: ['websocket'],
-        extraHeaders: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-        },
-      });
+  useEffect(() => {
+    if (!sessionId) return;
 
-      socket.current.on('connect', () => {
-        console.log('WebSocket connected');
-      });
+    // Establish WebSocket connection
+    const wsUrl = `ws://${window.location.hostname}:8000/ws/call_status/${sessionId}/`;
+    socket.current = new WebSocket(wsUrl);
 
-      socket.current.on('disconnect', () => {
-        console.log('WebSocket disconnected');
-      });
+    socket.current.onopen = () => {
+      console.log("WebSocket connected");
+    };
 
-      socket.current.on('call_status_message', (data: any) => {
-        // Handle real-time call status updates
-        setCallLogs((prevLogs) =>
-          prevLogs.map((log) =>
-            log.session_id === data.session_id ? { ...log, status: data.status } : log
-          )
-        );
-      });
+    socket.current.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      console.log("Message received:", data);
 
-      socket.current.on('error', (error: any) => {
-        console.error('WebSocket error:', error);
-      });
+      // Update call logs based on real-time updates
+      setCallLogs((prevLogs) =>
+        prevLogs.map((log) =>
+          log.session_id === data.session_id ? { ...log, status: data.status } : log
+        )
+      );
+    };
 
-      return () => {
-        if (socket.current) {
-          socket.current.disconnect();
-        }
-      };
-    }
+    socket.current.onclose = () => {
+      console.log("WebSocket disconnected");
+    };
+
+    socket.current.onerror = (error) => {
+      console.error("WebSocket error:", error);
+    };
+
+    // Cleanup WebSocket connection on unmount
+    return () => {
+      if (socket.current) {
+        socket.current.close();
+      }
+    };
   }, [sessionId]);
 
   const initiateCall = async () => {
     try {
       await axios.post(
-        'http://127.0.0.1:8000/call-center/make-call/',
+        "http://127.0.0.1:8000/call-center/make-call/",
         { phone_number: phoneNumber },
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
           },
         }
       );
       // Optionally, update the UI or show a success message
     } catch (error) {
-      console.error('Error initiating call:', error);
+      console.error("Error initiating call:", error);
     }
   };
 
@@ -129,8 +130,8 @@ const CallManager: React.FC = () => {
               <td>{log.phone_number}</td>
               <td>{log.status}</td>
               <td>{new Date(log.start_time).toLocaleString()}</td>
-              <td>{log.end_time ? new Date(log.end_time).toLocaleString() : 'N/A'}</td>
-              <td>{log.duration ? `${log.duration}s` : 'N/A'}</td>
+              <td>{log.end_time ? new Date(log.end_time).toLocaleString() : "N/A"}</td>
+              <td>{log.duration ? `${log.duration}s` : "N/A"}</td>
             </tr>
           ))}
         </tbody>
