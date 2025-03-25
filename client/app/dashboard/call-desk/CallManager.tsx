@@ -50,7 +50,7 @@ const CallManager: React.FC = () => {
     if (!sessionId) return;
 
     // Establish WebSocket connection
-    const wsUrl = `ws://${window.location.hostname}:8000/ws/call_status/${sessionId}/`;
+    const wsUrl = `ws://${window.location.hostname}:8001/ws/call_status/${sessionId}/`;
     socket.current = new WebSocket(wsUrl);
 
     socket.current.onopen = () => {
