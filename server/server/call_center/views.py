@@ -15,6 +15,10 @@ from .serializers import (
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
+import logging
+from django.utils.timezone import now as timezone_now
+logger = logging.getLogger(__name__)
+
 User = get_user_model()
 
 # Initialize Africa's Talking SDK
@@ -79,11 +83,13 @@ class MakeCallView(APIView):
                     callFrom=settings.AFRICASTALKING_CALLER_ID,
                     callTo=[phone_number]
                 )
+                logger.info(f"Africa's Talking API response: {response}")
 
                 # Log the call
                 call_log = CallLog.objects.create(
                     session_id=response['entries'][0]['sessionId'],
-                    phone_number=phone_number,
+                    caller_number=phone_number,
+                    destination_number=settings.AFRICASTALKING_CALLER_ID,
                     status="queued",
                     caller=request.user
                 )
@@ -95,7 +101,8 @@ class MakeCallView(APIView):
                 }, status=status.HTTP_201_CREATED)
 
             except Exception as e:
-                return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                logger.error(f"Error initiating call: {str(e)}")
+                return Response({"error": f"Error initiating call: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -104,20 +111,37 @@ class CallStatusWebhook(APIView):
     permission_classes = []  # No authentication for webhook
 
     def post(self, request):
-        serializer = CallStatusSerializer(data=request.data)
-        if serializer.is_valid():
+        try:
+            # Log the incoming request data
+            logger.info(f"Incoming webhook data: {request.data}")
+
+            # Validate the incoming data using the serializer
+            serializer = CallStatusSerializer(data=request.data)
+            if not serializer.is_valid():
+                # Log validation errors
+                logger.error(f"Validation errors: {serializer.errors}")
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            # Extract validated data
             session_id = serializer.validated_data['sessionId']
-            call_status = serializer.validated_data['status']
+            caller_number = serializer.validated_data['callerNumber']
+            destination_number = serializer.validated_data.get('destinationNumber')
+            call_status = serializer.validated_data.get('callSessionState', 'unknown')
 
             try:
+                # Retrieve the call log entry
                 call_log = CallLog.objects.get(session_id=session_id)
                 call_log.status = call_status.lower()
 
+                # Update destination number if provided
+                if destination_number:
+                    call_log.destination_number = destination_number
+
                 # If call is completed, update end time and duration
                 if call_status.lower() in ['completed', 'failed', 'no-answer', 'busy']:
-                    call_log.end_time = timezone.now()
-                    if serializer.validated_data.get('duration'):
-                        call_log.duration = serializer.validated_data.get('duration')
+                    call_log.end_time = timezone_now()
+                    if 'durationInSeconds' in serializer.validated_data:
+                        call_log.duration = int(serializer.validated_data['durationInSeconds'])
                     else:
                         call_log.calculate_duration()
 
@@ -133,15 +157,23 @@ class CallStatusWebhook(APIView):
                     }
                 )
 
+                logger.info(f"Call status updated successfully: sessionId={session_id}, status={call_status}")
                 return Response({"status": "success"}, status=status.HTTP_200_OK)
 
             except CallLog.DoesNotExist:
+                logger.error(f"Call session not found: sessionId={session_id}")
                 return Response(
                     {"error": "Call session not found"},
                     status=status.HTTP_404_NOT_FOUND
                 )
 
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            # Log unexpected exceptions
+            logger.error(f"Unexpected error processing webhook: {str(e)}")
+            return Response(
+                {"error": "Internal server error"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 class UserCallHistoryView(APIView):
     """Get call history for current authenticated user"""

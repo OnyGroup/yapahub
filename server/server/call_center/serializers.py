@@ -43,7 +43,7 @@ class CallLogSerializer(serializers.ModelSerializer):
         model = CallLog
         fields = [
             'id', 'session_id', 'caller', 'caller_id', 'receiver', 'receiver_id',
-            'phone_number', 'direction', 'start_time', 'end_time',
+            'caller_number', 'destination_number', 'direction', 'start_time', 'end_time',
             'duration', 'duration_formatted', 'status', 'notes'
         ]
 
@@ -64,7 +64,15 @@ class MakeCallSerializer(serializers.Serializer):
 
 class CallStatusSerializer(serializers.Serializer):
     """Serializer for receiving call status callbacks"""
+    isActive = serializers.CharField(required=False)
     sessionId = serializers.CharField()
-    status = serializers.CharField()
-    phoneNumber = serializers.CharField()
-    duration = serializers.IntegerField(required=False)
+    direction = serializers.CharField(required=False)
+    destinationNumber = serializers.CharField(required=False)
+    callerNumber = serializers.CharField()  # Use callerNumber instead of phoneNumber
+    callerCountryCode = serializers.CharField(required=False)
+    callStartTime = serializers.CharField(required=False)
+    durationInSeconds = serializers.CharField(required=False)
+    currencyCode = serializers.CharField(required=False)
+    amount = serializers.CharField(required=False)
+    callSessionState = serializers.CharField(required=False)
+    hangupCause = serializers.CharField(required=False)
