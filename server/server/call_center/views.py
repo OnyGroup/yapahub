@@ -18,6 +18,7 @@ from asgiref.sync import async_to_sync
 import logging
 from django.utils.timezone import now as timezone_now
 logger = logging.getLogger(__name__)
+from django.http import HttpResponse
 
 User = get_user_model()
 
@@ -118,7 +119,6 @@ class CallStatusWebhook(APIView):
             # Validate the incoming data using the serializer
             serializer = CallStatusSerializer(data=request.data)
             if not serializer.is_valid():
-                # Log validation errors
                 logger.error(f"Validation errors: {serializer.errors}")
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -126,26 +126,38 @@ class CallStatusWebhook(APIView):
             session_id = serializer.validated_data['sessionId']
             caller_number = serializer.validated_data['callerNumber']
             destination_number = serializer.validated_data.get('destinationNumber')
+            direction = serializer.validated_data.get('direction', 'unknown')
             call_status = serializer.validated_data.get('callSessionState', 'unknown')
 
             try:
-                # Retrieve the call log entry
-                call_log = CallLog.objects.get(session_id=session_id)
-                call_log.status = call_status.lower()
+                # Retrieve or create the call log entry
+                call_log, created = CallLog.objects.get_or_create(
+                    session_id=session_id,
+                    defaults={
+                        'caller_number': caller_number,
+                        'destination_number': destination_number,
+                        'direction': direction.lower(),
+                        'status': call_status.lower(),
+                        'start_time': timezone.now()
+                    }
+                )
 
-                # Update destination number if provided
-                if destination_number:
+                # Update existing call log if not newly created
+                if not created:
+                    call_log.caller_number = caller_number
                     call_log.destination_number = destination_number
+                    call_log.direction = direction.lower()
+                    call_log.status = call_status.lower()
 
-                # If call is completed, update end time and duration
-                if call_status.lower() in ['completed', 'failed', 'no-answer', 'busy']:
-                    call_log.end_time = timezone_now()
-                    if 'durationInSeconds' in serializer.validated_data:
-                        call_log.duration = int(serializer.validated_data['durationInSeconds'])
-                    else:
-                        call_log.calculate_duration()
+                    # If call is completed, update end time and duration
+                    if call_status.lower() in ['completed', 'failed', 'no-answer', 'busy']:
+                        call_log.end_time = timezone.now()
+                        if 'durationInSeconds' in serializer.validated_data:
+                            call_log.duration = int(serializer.validated_data['durationInSeconds'])
+                        else:
+                            call_log.calculate_duration()
 
-                call_log.save()
+                    call_log.save()
 
                 # Send real-time update to WebSocket
                 channel_layer = get_channel_layer()
@@ -160,20 +172,13 @@ class CallStatusWebhook(APIView):
                 logger.info(f"Call status updated successfully: sessionId={session_id}, status={call_status}")
                 return Response({"status": "success"}, status=status.HTTP_200_OK)
 
-            except CallLog.DoesNotExist:
-                logger.error(f"Call session not found: sessionId={session_id}")
-                return Response(
-                    {"error": "Call session not found"},
-                    status=status.HTTP_404_NOT_FOUND
-                )
+            except Exception as e:
+                logger.error(f"Error updating call log: {str(e)}")
+                return Response({"error": "Error updating call log"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         except Exception as e:
-            # Log unexpected exceptions
             logger.error(f"Unexpected error processing webhook: {str(e)}")
-            return Response(
-                {"error": "Internal server error"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            return Response({"error": "Internal server error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class UserCallHistoryView(APIView):
     """Get call history for current authenticated user"""
@@ -184,3 +189,26 @@ class UserCallHistoryView(APIView):
         calls = CallLog.objects.filter(caller=user).order_by('-start_time')
         serializer = CallLogSerializer(calls, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+class IVRHandler(APIView):
+    """Handle inbound calls and return IVR response"""
+    permission_classes = []
+
+    def post(self, request):
+        try:
+            # Log the incoming request data
+            logger.info(f"Incoming IVR request: {request.data}")
+
+            # Respond with an IVR menu
+            response = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <Response>
+                <Say>Welcome to our service. Please hold while we connect you.</Say>
+                <Dial>+254712345678</Dial>
+            </Response>
+            """
+            return HttpResponse(response, content_type="application/xml")
+
+        except Exception as e:
+            logger.error(f"Error handling IVR request: {str(e)}")
+            return Response({"error": "Internal server error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

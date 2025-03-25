@@ -30,19 +30,19 @@ class CallLog(models.Model):
     )
 
     # Core fields
-    session_id = models.CharField(max_length=100, unique=True)  # Matches sessionId from API
-    caller = models.ForeignKey(User, on_delete=models.CASCADE, related_name='initiated_calls')
+    session_id = models.CharField(max_length=100, unique=True) 
+    caller = models.ForeignKey(User, on_delete=models.CASCADE, related_name='initiated_calls', null=True, blank=True)
     receiver = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_calls', null=True, blank=True)
-    caller_number = models.CharField(max_length=20)  # Matches callerNumber from API
-    destination_number = models.CharField(max_length=20)  # Matches destinationNumber from API
-    direction = models.CharField(max_length=10, choices=DIRECTION_CHOICES, default='outbound')  # Matches direction from API
-    start_time = models.DateTimeField(default=timezone.now)  # Matches callStartTime from API
+    caller_number = models.CharField(max_length=20) 
+    destination_number = models.CharField(max_length=20) 
+    direction = models.CharField(max_length=10, choices=DIRECTION_CHOICES, default='outbound') 
+    start_time = models.DateTimeField(default=timezone.now)
     end_time = models.DateTimeField(null=True, blank=True)
-    duration = models.IntegerField(null=True, blank=True, help_text='Duration in seconds')  # Matches durationInSeconds from API
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='queued')  # Matches callSessionState from API
-    hangup_cause = models.CharField(max_length=50, choices=HANGUP_CAUSES, null=True, blank=True)  # Matches hangupCause from API
-    currency_code = models.CharField(max_length=10, null=True, blank=True)  # Matches currencyCode from API
-    amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)  # Matches amount from API
+    duration = models.IntegerField(null=True, blank=True, help_text='Duration in seconds') 
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='queued') 
+    hangup_cause = models.CharField(max_length=50, choices=HANGUP_CAUSES, null=True, blank=True) 
+    currency_code = models.CharField(max_length=10, null=True, blank=True) 
+    amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True) 
     notes = models.TextField(blank=True, null=True)
 
     def __str__(self):
