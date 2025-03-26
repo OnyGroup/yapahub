@@ -2,6 +2,7 @@ import africastalking
 import re
 from django.conf import settings
 from django.utils import timezone
+from django.db.models import Q
 from django.contrib.auth import get_user_model
 from rest_framework import viewsets, status
 from rest_framework.views import APIView
@@ -186,7 +187,12 @@ class UserCallHistoryView(APIView):
 
     def get(self, request):
         user = request.user
-        calls = CallLog.objects.filter(caller=user).order_by('-start_time')
+
+        # Include both inbound and outbound calls
+        calls = CallLog.objects.filter(
+            Q(caller=user) | Q(receiver=user)
+        ).order_by('-start_time')
+
         serializer = CallLogSerializer(calls, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
