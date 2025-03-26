@@ -54,7 +54,7 @@ const IncomingCallManager: React.FC = () => {
     socket.current.onmessage = (event) => {
       const data = JSON.parse(event.data);
       console.log("Incoming call notification:", data);
-    
+
       // Update incoming call logs in real-time
       setIncomingCalls((prevCalls) => [
         ...prevCalls,
@@ -63,7 +63,7 @@ const IncomingCallManager: React.FC = () => {
           session_id: data.sessionId,
           caller_number: data.callerNumber,
           destination_number: data.destinationNumber,
-          direction: "inbound",
+          direction: "inbound", // Ensure this is set correctly
           status: data.callSessionState || "Ringing",
           start_time: new Date().toISOString(),
           end_time: null,

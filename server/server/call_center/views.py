@@ -130,6 +130,22 @@ class CallStatusWebhook(APIView):
             direction = serializer.validated_data.get('direction', 'unknown')
             call_status = serializer.validated_data.get('callSessionState', 'unknown')
 
+            # Determine direction explicitly
+            if direction.lower() == 'inbound':
+                direction = 'inbound'
+                # Swap caller_number and destination_number for inbound calls
+                caller_number, destination_number = destination_number, caller_number
+            elif caller_number and destination_number:
+                # If caller_number matches your Africa's Talking number, it's an inbound call
+                africastalking_number = settings.AFRICASTALKING_CALLER_ID
+                if caller_number == africastalking_number:
+                    direction = 'inbound'
+                    caller_number, destination_number = destination_number, caller_number
+                else:
+                    direction = 'outbound'
+            else:
+                direction = 'outbound'
+
             try:
                 # Retrieve or create the call log entry
                 call_log, created = CallLog.objects.get_or_create(
@@ -137,7 +153,7 @@ class CallStatusWebhook(APIView):
                     defaults={
                         'caller_number': caller_number,
                         'destination_number': destination_number,
-                        'direction': direction.lower(),
+                        'direction': direction,
                         'status': call_status.lower(),
                         'start_time': timezone.now()
                     }
@@ -147,7 +163,7 @@ class CallStatusWebhook(APIView):
                 if not created:
                     call_log.caller_number = caller_number
                     call_log.destination_number = destination_number
-                    call_log.direction = direction.lower()
+                    call_log.direction = direction
                     call_log.status = call_status.lower()
 
                     # If call is completed, update end time and duration
