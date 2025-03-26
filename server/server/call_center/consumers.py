@@ -41,3 +41,27 @@ class CallStatusConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps({
             'message': message
         }))
+
+class IncomingCallConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        # uses 'global' as the default group name if no session_id is provided
+        self.session_id = self.scope['url_route']['kwargs'].get('session_id', 'global')
+        self.group_name = f'incoming_call_{self.session_id}'
+
+        # Join group
+        await self.channel_layer.group_add(
+            self.group_name,
+            self.channel_name
+        )
+        await self.accept()
+
+    async def disconnect(self, close_code):
+        # Leave group
+        await self.channel_layer.group_discard(
+            self.group_name,
+            self.channel_name
+        )
+
+    async def call_status_message(self, event):
+        # Send message to WebSocket
+        await self.send(text_data=json.dumps(event))
