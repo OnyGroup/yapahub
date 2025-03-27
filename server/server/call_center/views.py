@@ -67,6 +67,7 @@ class MakeCallView(APIView):
         if serializer.is_valid():
             phone_number = serializer.validated_data['phone_number']
 
+            # Validate phone number format
             if not re.match(r'^\+\d{10,15}$', phone_number):
                 return Response(
                     {"error": "Invalid phone number format. Use E.164 format like +254700123456"},
@@ -74,20 +75,11 @@ class MakeCallView(APIView):
                 )
 
             try:
-                call_kwargs = {
-                    'callFrom': settings.AFRICASTALKING_CALLER_ID,
-                    'callTo': [phone_number]
-                }
-                
-                # Add callback URL based on SDK version
-                if hasattr(voice.call, 'callbackUrl'):
-                    call_kwargs['callbackUrl'] = settings.CALLBACK_URL
-                elif hasattr(voice.call, 'callback_url'):
-                    call_kwargs['callback_url'] = settings.CALLBACK_URL
-                else:
-                    logger.warning("Callback URL parameter not found in SDK")
-
-                response = voice.call(**call_kwargs)
+                # Make the call using Africa's Talking Voice API
+                response = voice.call(
+                    callFrom=settings.AFRICASTALKING_CALLER_ID,
+                    callTo=[phone_number]
+                )
                 logger.info(f"Africa's Talking API response: {response}")
 
                 # Log the outbound call
@@ -101,13 +93,14 @@ class MakeCallView(APIView):
                 )
 
                 return Response({
-                    "message": "Call initiated successfully",
+                    "message": "Call initiated successfully via Africa's Talking",
+                    "call_id": call_log.id,
                     "session_id": call_log.session_id
-                }, status=status.HTTP_200_OK)
+                }, status=status.HTTP_201_CREATED)
 
             except Exception as e:
                 logger.error(f"Error initiating call: {str(e)}")
-                return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return Response({"error": f"Error initiating call: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -157,7 +150,7 @@ class CallStatusWebhook(APIView):
                 'hangup_cause': data.get('hangupCause'),
                 'start_time': timezone.now()
             }
-            
+
             # Set receiver for inbound calls
             if direction == 'inbound':
                 defaults['receiver'] = receiver
@@ -227,26 +220,52 @@ class UserCallHistoryView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 class IVRHandler(APIView):
-    """Handle inbound calls and return IVR response"""
-    permission_classes = []
-
     def post(self, request):
-        try:
-            # Log the incoming request data
-            logger.info(f"Incoming IVR request: {request.data}")
+        response = """<?xml version="1.0"?>
+        <Response>
+            <Dial phoneNumbers="+254757253861" record="false"/>
+        </Response>"""
+        return HttpResponse(response, content_type="application/xml")
 
-            # Respond with an IVR menu
-            response = """
-            <?xml version="1.0" encoding="UTF-8"?>
-            <Response>
-                <Say>Welcome to our service. Please hold while we connect you.</Say>
-                <Dial timeout="20" record="true">+254712345678</Dial>
-                <Say>We are unable to connect you at this time. Please try again later.</Say>
-                <Hangup />
-            </Response>
-            """
-            return HttpResponse(response, content_type="application/xml")
+# class IVRHandler(APIView):
+#     """Handle inbound calls and return IVR response"""
+#     permission_classes = []
 
-        except Exception as e:
-            logger.error(f"Error handling IVR request: {str(e)}")
-            return Response({"error": "Internal server error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+#     def post(self, request):
+#         try:
+#             # Log the incoming request data
+#             logger.info(f"Incoming IVR request: {request.data}")
+
+#             # Extract parameters from the POST request
+#             is_active = request.data.get('isActive')
+#             caller_number = request.data.get('callerNumber')
+#             destination_number = request.data.get('destinationNumber')
+
+#             # Handle active call session
+#             if is_active == "1":
+#                 # Respond with an IVR menu
+#                 response = """
+#                 <?xml version="1.0" encoding="UTF-8"?>
+#                 <Response>
+#                     <Say>Welcome to our service. Please hold while we connect you.</Say>
+#                     <Dial timeout="20" record="true">+254757253861</Dial>
+#                     <Say>We are unable to connect you at this time. Please try again later.</Say>
+#                     <Hangup />
+#                 </Response>
+#                 """
+#                 return HttpResponse(response, content_type="application/xml")
+
+#             # Handle final call session state
+#             elif is_active == "0":
+#                 # Log the end of the call
+#                 logger.info("Call session ended.")
+#                 return HttpResponse("", status=200)
+
+#             # Handle unexpected isActive values
+#             else:
+#                 logger.error("Unexpected isActive value received.")
+#                 return HttpResponse("", status=400)
+
+#         except Exception as e:
+#             logger.error(f"Error handling IVR request: {str(e)}")
+#             return Response({"error": "Internal server error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
