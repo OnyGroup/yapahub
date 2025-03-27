@@ -67,7 +67,6 @@ class MakeCallView(APIView):
         if serializer.is_valid():
             phone_number = serializer.validated_data['phone_number']
 
-            # Validate phone number format
             if not re.match(r'^\+\d{10,15}$', phone_number):
                 return Response(
                     {"error": "Invalid phone number format. Use E.164 format like +254700123456"},
@@ -75,126 +74,113 @@ class MakeCallView(APIView):
                 )
 
             try:
-                # Get active callback URL
-                callback_url = CallbackURL.objects.filter(is_active=True).first()
-                if not callback_url:
-                    callback_url = settings.CALLBACK_URL
+                call_kwargs = {
+                    'callFrom': settings.AFRICASTALKING_CALLER_ID,
+                    'callTo': [phone_number]
+                }
+                
+                # Add callback URL based on SDK version
+                if hasattr(voice.call, 'callbackUrl'):
+                    call_kwargs['callbackUrl'] = settings.CALLBACK_URL
+                elif hasattr(voice.call, 'callback_url'):
+                    call_kwargs['callback_url'] = settings.CALLBACK_URL
+                else:
+                    logger.warning("Callback URL parameter not found in SDK")
 
-                # Make the call using Africa's Talking Voice API
-                response = voice.call(
-                    callFrom=settings.AFRICASTALKING_CALLER_ID,
-                    callTo=[phone_number]
-                )
+                response = voice.call(**call_kwargs)
                 logger.info(f"Africa's Talking API response: {response}")
 
-                # Log the call
+                # Log the outbound call
                 call_log = CallLog.objects.create(
                     session_id=response['entries'][0]['sessionId'],
-                    caller_number=phone_number,
-                    destination_number=settings.AFRICASTALKING_CALLER_ID,
+                    caller_number=settings.AFRICASTALKING_CALLER_ID,
+                    destination_number=phone_number,
+                    direction='outbound',
                     status="queued",
                     caller=request.user
                 )
 
                 return Response({
-                    "message": "Call initiated successfully via Africa's Talking",
-                    "call_id": call_log.id,
+                    "message": "Call initiated successfully",
                     "session_id": call_log.session_id
-                }, status=status.HTTP_201_CREATED)
+                }, status=status.HTTP_200_OK)
 
             except Exception as e:
                 logger.error(f"Error initiating call: {str(e)}")
-                return Response({"error": f"Error initiating call: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class CallStatusWebhook(APIView):
     """Webhook to receive call status updates from Africa's Talking"""
-    permission_classes = []  # No authentication for webhook
+    permission_classes = []
 
     def post(self, request):
         try:
-            # Log the incoming request data
             logger.info(f"Incoming webhook data: {request.data}")
-
-            # Validate the incoming data using the serializer
             serializer = CallStatusSerializer(data=request.data)
             if not serializer.is_valid():
                 logger.error(f"Validation errors: {serializer.errors}")
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-            # Extract validated data
-            session_id = serializer.validated_data['sessionId']
-            caller_number = serializer.validated_data['callerNumber']
-            destination_number = serializer.validated_data.get('destinationNumber')
-            direction = serializer.validated_data.get('direction', 'unknown')
-            call_status = serializer.validated_data.get('callSessionState', 'unknown')
+            data = serializer.validated_data
+            session_id = data['sessionId']
+            at_number = settings.AFRICASTALKING_CALLER_ID
 
-            # Determine direction explicitly
-            if direction.lower() == 'inbound':
-                direction = 'inbound'
-                # Swap caller_number and destination_number for inbound calls
-                caller_number, destination_number = destination_number, caller_number
-            elif caller_number and destination_number:
-                # If caller_number matches your Africa's Talking number, it's an inbound call
-                africastalking_number = settings.AFRICASTALKING_CALLER_ID
-                if caller_number == africastalking_number:
-                    direction = 'inbound'
-                    caller_number, destination_number = destination_number, caller_number
-                else:
-                    direction = 'outbound'
-            else:
+            # Determine direction and numbers
+            if data.get('direction', '').lower() == 'outbound':
                 direction = 'outbound'
+                caller_number = at_number
+                destination_number = data['callerNumber'] 
+            elif data['callerNumber'] != at_number:
+                # Inbound call (external number calling our AT number)
+                direction = 'inbound'
+                caller_number = data['callerNumber']  # External number
+                destination_number = at_number  # Our AT number
+            else:
+                # Shouldn't normally happen, but handle as outbound
+                direction = 'outbound'
+                caller_number = at_number
+                destination_number = data.get('destinationNumber', '')
 
-            try:
-                # Retrieve or create the call log entry
-                call_log, created = CallLog.objects.get_or_create(
-                    session_id=session_id,
-                    defaults={
-                        'caller_number': caller_number,
-                        'destination_number': destination_number,
+            # Update or create call log
+            call_log, created = CallLog.objects.update_or_create(
+                session_id=session_id,
+                defaults={
+                    'caller_number': caller_number,
+                    'destination_number': destination_number,
+                    'direction': direction,
+                    'status': data.get('callSessionState', 'unknown').lower(),
+                    'hangup_cause': data.get('hangupCause'),
+                    'start_time': timezone.now()
+                }
+            )
+
+            # Update end time if call completed
+            if call_log.status in ['completed', 'failed', 'no-answer', 'busy']:
+                call_log.end_time = timezone.now()
+                if 'durationInSeconds' in data:
+                    call_log.duration = int(data['durationInSeconds'])
+                call_log.save()
+
+            # WebSocket notification
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f'call_status_{session_id}',
+                {
+                    'type': 'call_status_message',
+                    'message': {
+                        'status': call_log.status,
                         'direction': direction,
-                        'status': call_status.lower(),
-                        'start_time': timezone.now()
+                        'session_id': session_id
                     }
-                )
+                }
+            )
 
-                # Update existing call log if not newly created
-                if not created:
-                    call_log.caller_number = caller_number
-                    call_log.destination_number = destination_number
-                    call_log.direction = direction
-                    call_log.status = call_status.lower()
-
-                    # If call is completed, update end time and duration
-                    if call_status.lower() in ['completed', 'failed', 'no-answer', 'busy']:
-                        call_log.end_time = timezone.now()
-                        if 'durationInSeconds' in serializer.validated_data:
-                            call_log.duration = int(serializer.validated_data['durationInSeconds'])
-                        else:
-                            call_log.calculate_duration()
-
-                    call_log.save()
-
-                # Send real-time update to WebSocket
-                channel_layer = get_channel_layer()
-                async_to_sync(channel_layer.group_send)(
-                    f'call_status_{session_id}',
-                    {
-                        'type': 'call_status_message',
-                        'message': call_status
-                    }
-                )
-
-                logger.info(f"Call status updated successfully: sessionId={session_id}, status={call_status}")
-                return Response({"status": "success"}, status=status.HTTP_200_OK)
-
-            except Exception as e:
-                logger.error(f"Error updating call log: {str(e)}")
-                return Response({"error": "Error updating call log"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"status": "success"}, status=status.HTTP_200_OK)
 
         except Exception as e:
-            logger.error(f"Unexpected error processing webhook: {str(e)}")
+            logger.error(f"Error in webhook: {str(e)}", exc_info=True)
             return Response({"error": "Internal server error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class UserCallHistoryView(APIView):
@@ -203,10 +189,17 @@ class UserCallHistoryView(APIView):
 
     def get(self, request):
         user = request.user
+        user_phone_numbers = PhoneNumber.objects.filter(assigned_to=user).values_list('number', flat=True)
 
-        # Include both inbound and outbound calls
+        # Include calls where:
+        # - User is the caller OR
+        # - User is the receiver OR
+        # - User's assigned number is involved in the call
         calls = CallLog.objects.filter(
-            Q(caller=user) | Q(receiver=user)
+            Q(caller=user) | 
+            Q(receiver=user) |
+            Q(caller_number__in=user_phone_numbers) |
+            Q(destination_number__in=user_phone_numbers)
         ).order_by('-start_time')
 
         serializer = CallLogSerializer(calls, many=True)

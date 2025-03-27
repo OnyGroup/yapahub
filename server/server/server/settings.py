@@ -35,7 +35,7 @@ ALLOWED_HOSTS = [
     "127.0.0.1",
     "localhost",
     "yapahub.com",
-    "3871-41-90-185-82.ngrok-free.app"  # Ngrok URL
+    "00b3-41-84-146-254.ngrok-free.app"  # Ngrok URL
 ]
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
@@ -187,7 +187,7 @@ REST_FRAMEWORK = {
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # Local Next.js
     "https://yapahub.com",  # Yapa Hub 
-    "https://3871-41-90-185-82.ngrok-free.app", # Ngrok URL
+    "https://00b3-41-84-146-254.ngrok-free.app", # Ngrok URL
 ]
 
 # Allow credentials
