@@ -240,7 +240,9 @@ class IVRHandler(APIView):
             <?xml version="1.0" encoding="UTF-8"?>
             <Response>
                 <Say>Welcome to our service. Please hold while we connect you.</Say>
-                <Dial>+254712345678</Dial>
+                <Dial timeout="20" record="true">+254712345678</Dial>
+                <Say>We are unable to connect you at this time. Please try again later.</Say>
+                <Hangup />
             </Response>
             """
             return HttpResponse(response, content_type="application/xml")
