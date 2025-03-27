@@ -219,53 +219,63 @@ class UserCallHistoryView(APIView):
         serializer = CallLogSerializer(calls, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+class CallerIdView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        return Response({
+            'caller_id': settings.AFRICASTALKING_CALLER_ID
+        })
+
+# new views
+class AnswerCallView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        session_id = request.data.get('session_id')
+        # Your logic to answer the call via AT API
+        return Response({"status": "success"})
+
+class EndCallView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        session_id = request.data.get('session_id')
+        # Your logic to end the call via AT API
+        return Response({"status": "success"})
+
+class IncomingCallsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        calls = CallLog.objects.filter(
+            direction='inbound',
+            receiver=request.user
+        ).order_by('-start_time')
+        serializer = CallLogSerializer(calls, many=True)
+        return Response(serializer.data)
+
 class IVRHandler(APIView):
     def post(self, request):
         response = """<?xml version="1.0"?>
         <Response>
-            <Dial phoneNumbers="+254757253861" record="false"/>
+            <Dial phoneNumbers="+254705479844" record="false"/>
         </Response>"""
         return HttpResponse(response, content_type="application/xml")
 
+# redirects call to the specified number i.e. +254705479844 in this case
 # class IVRHandler(APIView):
-#     """Handle inbound calls and return IVR response"""
-#     permission_classes = []
-
 #     def post(self, request):
-#         try:
-#             # Log the incoming request data
-#             logger.info(f"Incoming IVR request: {request.data}")
+#         is_active = request.data.get('isActive') == '1'
 
-#             # Extract parameters from the POST request
-#             is_active = request.data.get('isActive')
-#             caller_number = request.data.get('callerNumber')
-#             destination_number = request.data.get('destinationNumber')
-
-#             # Handle active call session
-#             if is_active == "1":
-#                 # Respond with an IVR menu
-#                 response = """
-#                 <?xml version="1.0" encoding="UTF-8"?>
-#                 <Response>
-#                     <Say>Welcome to our service. Please hold while we connect you.</Say>
-#                     <Dial timeout="20" record="true">+254757253861</Dial>
-#                     <Say>We are unable to connect you at this time. Please try again later.</Say>
-#                     <Hangup />
-#                 </Response>
-#                 """
-#                 return HttpResponse(response, content_type="application/xml")
-
-#             # Handle final call session state
-#             elif is_active == "0":
-#                 # Log the end of the call
-#                 logger.info("Call session ended.")
-#                 return HttpResponse("", status=200)
-
-#             # Handle unexpected isActive values
-#             else:
-#                 logger.error("Unexpected isActive value received.")
-#                 return HttpResponse("", status=400)
-
-#         except Exception as e:
-#             logger.error(f"Error handling IVR request: {str(e)}")
-#             return Response({"error": "Internal server error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+#         if is_active:
+#             response = """<?xml version="1.0"?>
+#             <Response>
+#                 <Dial phoneNumbers="+254705479844" sequential="true"/>
+#             </Response>"""
+#         else:
+#             response = """<?xml version="1.0"?>
+#             <Response>
+#                 <Reject reason="busy"/>
+#             </Response>"""
+#         return HttpResponse(response, content_type="application/xml")

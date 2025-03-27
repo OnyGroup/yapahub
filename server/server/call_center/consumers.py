@@ -62,6 +62,35 @@ class IncomingCallConsumer(AsyncWebsocketConsumer):
             self.channel_name
         )
 
+    async def receive(self, text_data):
+        data = json.loads(text_data)
+        
+        if data.get('action') == 'answer_call':
+            await self.channel_layer.group_send(
+                f'call_{data["session_id"]}',
+                {
+                    'type': 'call.answer',
+                    'session_id': data['session_id']
+                }
+            )
+        elif data.get('action') == 'end_call':
+            await self.channel_layer.group_send(
+                f'call_{data["session_id"]}',
+                {
+                    'type': 'call.end',
+                    'session_id': data['session_id']
+                }
+            )
+        else:
+            # Handle other message types or forward to status handler
+            await self.channel_layer.group_send(
+                self.group_name,
+                {
+                    'type': 'call_status_message',
+                    'message': data
+                }
+            )
+
     async def call_status_message(self, event):
         # Send message to WebSocket
         await self.send(text_data=json.dumps(event))
