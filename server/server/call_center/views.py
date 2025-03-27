@@ -131,29 +131,41 @@ class CallStatusWebhook(APIView):
             if data.get('direction', '').lower() == 'outbound':
                 direction = 'outbound'
                 caller_number = at_number
-                destination_number = data['callerNumber'] 
+                destination_number = data['callerNumber']
+                receiver = None
             elif data['callerNumber'] != at_number:
-                # Inbound call (external number calling our AT number)
                 direction = 'inbound'
-                caller_number = data['callerNumber']  # External number
-                destination_number = at_number  # Our AT number
+                caller_number = data['callerNumber']
+                destination_number = at_number
+                # Find which user this AT number is assigned to
+                try:
+                    receiver = PhoneNumber.objects.get(number=at_number).assigned_to
+                except PhoneNumber.DoesNotExist:
+                    receiver = None
             else:
-                # Shouldn't normally happen, but handle as outbound
                 direction = 'outbound'
                 caller_number = at_number
                 destination_number = data.get('destinationNumber', '')
+                receiver = None
+
+            # Prepare defaults for call log
+            defaults = {
+                'caller_number': caller_number,
+                'destination_number': destination_number,
+                'direction': direction,
+                'status': data.get('callSessionState', 'unknown').lower(),
+                'hangup_cause': data.get('hangupCause'),
+                'start_time': timezone.now()
+            }
+            
+            # Set receiver for inbound calls
+            if direction == 'inbound':
+                defaults['receiver'] = receiver
 
             # Update or create call log
             call_log, created = CallLog.objects.update_or_create(
                 session_id=session_id,
-                defaults={
-                    'caller_number': caller_number,
-                    'destination_number': destination_number,
-                    'direction': direction,
-                    'status': data.get('callSessionState', 'unknown').lower(),
-                    'hangup_cause': data.get('hangupCause'),
-                    'start_time': timezone.now()
-                }
+                defaults=defaults
             )
 
             # Update end time if call completed
@@ -189,19 +201,28 @@ class UserCallHistoryView(APIView):
 
     def get(self, request):
         user = request.user
-        user_phone_numbers = PhoneNumber.objects.filter(assigned_to=user).values_list('number', flat=True)
+        
+        # Get all phone numbers assigned to this user
+        user_phone_numbers = PhoneNumber.objects.filter(
+            assigned_to=user
+        ).values_list('number', flat=True)
+        
+        # Get the primary AT number assigned to user
+        at_number_assigned = settings.AFRICASTALKING_CALLER_ID in user_phone_numbers
 
-        # Include calls where:
-        # - User is the caller OR
-        # - User is the receiver OR
-        # - User's assigned number is involved in the call
-        calls = CallLog.objects.filter(
-            Q(caller=user) | 
-            Q(receiver=user) |
-            Q(caller_number__in=user_phone_numbers) |
-            Q(destination_number__in=user_phone_numbers)
-        ).order_by('-start_time')
+        # Build the query
+        query = Q(caller=user) | Q(receiver=user)
+        
+        # If user owns the AT number, include all calls to/from that number
+        if at_number_assigned:
+            query |= Q(caller_number=settings.AFRICASTALKING_CALLER_ID)
+            query |= Q(destination_number=settings.AFRICASTALKING_CALLER_ID)
+        else:
+            # Otherwise just include calls involving their other numbers
+            query |= Q(caller_number__in=user_phone_numbers)
+            query |= Q(destination_number__in=user_phone_numbers)
 
+        calls = CallLog.objects.filter(query).order_by('-start_time')
         serializer = CallLogSerializer(calls, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
