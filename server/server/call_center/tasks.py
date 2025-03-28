@@ -19,15 +19,15 @@ logger = logging.getLogger(__name__)
     retry_backoff=True,
     retry_backoff_max=60,
     retry_jitter=True,
-    acks_late=True  # Don't acknowledge task until it's actually done
+    acks_late=True
 )
 def update_call_log(self, session_id, defaults):
     """
-    Enhanced Celery task for handling call log updates with:
     - Atomic transactions
     - Smart retry with exponential backoff
     - Comprehensive error handling
     - Deadlock prevention
+    - Fixed datetime operations
     """
     try:
         # Start timing for performance monitoring
@@ -46,8 +46,25 @@ def update_call_log(self, session_id, defaults):
             # Process completed calls
             if defaults.get('status') in ['completed', 'failed', 'busy', 'no-answer']:
                 call_log.end_time = timezone.now()
+                
+                # Handle duration calculation with proper datetime conversion
                 if not call_log.duration and call_log.start_time:
-                    call_log.duration = (call_log.end_time - call_log.start_time).seconds
+                    try:
+                        # Ensure start_time is datetime object
+                        if isinstance(call_log.start_time, str):
+                            from datetime import datetime
+                            call_log.start_time = datetime.fromisoformat(call_log.start_time)
+                        
+                        # Calculate duration only if both times are datetime objects
+                        if isinstance(call_log.start_time, datetime) and isinstance(call_log.end_time, datetime):
+                            call_log.duration = (call_log.end_time - call_log.start_time).seconds
+                        else:
+                            logger.warning("Invalid datetime types for duration calculation")
+                            call_log.duration = defaults.get('duration', 0)
+                    except (TypeError, ValueError) as e:
+                        logger.error(f"Duration calculation error: {str(e)}")
+                        call_log.duration = defaults.get('duration', 0)
+                
                 call_log.save()
 
                 # Clean up queued calls if inbound
@@ -68,8 +85,8 @@ def update_call_log(self, session_id, defaults):
         max_retries = self.max_retries
         
         # Calculate wait time with exponential backoff and jitter
-        base_wait = min(2 ** current_retry, 30)  # Cap at 30 seconds
-        jitter = uniform(0, 0.5)  # Add random jitter up to 0.5 seconds
+        base_wait = min(2 ** current_retry, 30)
+        jitter = uniform(0, 0.5)
         wait_time = base_wait + jitter
         
         logger.warning(
@@ -86,7 +103,12 @@ def update_call_log(self, session_id, defaults):
         logger.error(
             f"Unexpected error processing call log for session {session_id}: {str(exc)}",
             exc_info=True,
-            extra={'session_id': session_id, 'defaults': defaults}
+            extra={
+                'session_id': session_id,
+                'defaults': defaults,
+                'start_time_type': str(type(call_log.start_time)) if 'call_log' in locals() else 'N/A',
+                'end_time_type': str(type(call_log.end_time)) if 'call_log' in locals() else 'N/A'
+            }
         )
         # Notify administrators via error channel
         async_to_sync(get_channel_layer().group_send)(
@@ -94,7 +116,8 @@ def update_call_log(self, session_id, defaults):
             {
                 'type': 'task.error',
                 'session_id': session_id,
-                'error': str(exc)
+                'error': str(exc),
+                'details': 'datetime calculation failed' if 'unsupported operand type' in str(exc) else 'other error'
             }
         )
         raise
