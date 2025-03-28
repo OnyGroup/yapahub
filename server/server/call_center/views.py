@@ -424,7 +424,7 @@ class IVRHandler(APIView):
                 response = """<?xml version="1.0"?>
                 <Response>
                     <Say voice="woman">All our agents are busy. Please hold.</Say>
-                    <Play url="https://example.com/hold_music.wav"/>
+                    <Play url="https://raw.githubusercontent.com/OnyGroup/yapahub/4e2160c6e77970c72abd0dcee1b6423d4678ff59/client/public/sounds/waiting_music.wav"/>
                 </Response>"""
                 
             return HttpResponse(response, content_type="application/xml")
