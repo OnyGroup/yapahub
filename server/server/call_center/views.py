@@ -378,59 +378,65 @@ class AgentStatusView(APIView):
 #         </Response>"""
 #         return HttpResponse(response, content_type="application/xml")  
 
+# Add this to your views.py
+class RecordingCallback(APIView):
+    def post(self, request):
+        recording_url = request.data.get('recordingUrl')
+        # Process recording...
+        return HttpResponse("""<Response/>""", content_type="application/xml")
+
 class IVRHandler(APIView):
     def post(self, request):
         logger.info(f"Raw IVR request data: {request.data}")
         try:
             data = request.data
-            logger.info(f"Processed IVR data: {data}")
-            caller_number = data.get('callerNumber')
+            is_active = data.get('isActive') == '1'
             session_id = data.get('sessionId')
             direction = data.get('direction', '').lower()
+            caller_number = data.get('callerNumber')
+            
+            if not is_active:
+                # Final callback for completed call
+                logger.info(f"Call session {session_id} completed")
+                return HttpResponse("""<Response/>""", content_type="application/xml")
             
             # First check if this call is already in queue
             if QueuedCall.objects.filter(session_id=session_id).exists():
-                return HttpResponse("""<Response><Reject/></Response>""", content_type="application/xml")
+                return HttpResponse("""<Response><Reject/></Response>""", 
+                                 content_type="application/xml")
             
             # Check if agents are available
             available_agents = AgentStatus.objects.filter(is_available=True)
             
             if available_agents.exists():
-                # Answer the call with immediate response
+                # Answer the call directly on the AT number with recording
                 response = """<?xml version="1.0"?>
                 <Response>
                     <Say voice="woman">Thank you for calling. Please wait while we connect you.</Say>
-                    <Dial phoneNumbers="{}" record="true" callerId="{}"/>
-                </Response>""".format(
-                    settings.AFRICASTALKING_CALLER_ID, 
-                    settings.AFRICASTALKING_CALLER_ID 
-                )
+                    <Record finishOnKey="#" maxLength="3600" playBeep="true"/>
+                </Response>"""
             else:
-                # Add to queue
-                queued_call = QueuedCall.create_queued_call(
+                # Add to queue with hold music
+                QueuedCall.objects.create(
                     session_id=session_id,
                     caller_number=caller_number
                 )
-                if not queued_call:
-                    logger.error("Failed to queue call")
-                    return HttpResponse("""<Response><Reject/></Response>""", 
-                                    content_type="application/xml")
                 response = """<?xml version="1.0"?>
                 <Response>
                     <Say voice="woman">All our agents are busy. Please hold.</Say>
-                    <Play>waiting_music.mp3</Play>
+                    <Play url="https://example.com/hold_music.wav"/>
                 </Response>"""
                 
             return HttpResponse(response, content_type="application/xml")
             
         except Exception as e:
             logger.error(f"IVR error: {str(e)}", exc_info=True)
-            # Fallback to simple answer if something fails
+            # Fallback response that always works
             return HttpResponse("""<?xml version="1.0"?>
                 <Response>
                     <Say>Welcome to our service</Say>
-                    <Dial phoneNumbers="{}" record="false"/>
-                </Response>""".format(settings.AFRICASTALKING_CALLER_ID),
+                    <Record finishOnKey="#" maxLength="3600"/>
+                </Response>""",
                 content_type="application/xml"
             )
 
