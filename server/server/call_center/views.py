@@ -3,18 +3,20 @@ import re
 from django.conf import settings
 from django.utils import timezone
 from django.db.models import Q
+from django.db import connection
 from django.contrib.auth import get_user_model
 from rest_framework import viewsets, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from .models import CallLog, CallbackURL, PhoneNumber
+from .models import CallLog, CallbackURL, PhoneNumber, QueuedCall, AgentStatus
 from .serializers import (
     CallLogSerializer, CallbackURLSerializer, PhoneNumberSerializer,
-    MakeCallSerializer, CallStatusSerializer
+    MakeCallSerializer, CallStatusSerializer, QueuedCallSerializer
 )
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
+from .tasks import update_call_log
 
 import logging
 from django.utils.timezone import now as timezone_now
@@ -109,8 +111,11 @@ class CallStatusWebhook(APIView):
     permission_classes = []
 
     def post(self, request):
+        channel_layer = get_channel_layer()
         try:
+            # Log the incoming request data for debugging
             logger.info(f"Incoming webhook data: {request.data}")
+            
             serializer = CallStatusSerializer(data=request.data)
             if not serializer.is_valid():
                 logger.error(f"Validation errors: {serializer.errors}")
@@ -120,7 +125,7 @@ class CallStatusWebhook(APIView):
             session_id = data['sessionId']
             at_number = settings.AFRICASTALKING_CALLER_ID
 
-            # Determine direction and numbers
+            # Determine call direction and participants
             if data.get('direction', '').lower() == 'outbound':
                 direction = 'outbound'
                 caller_number = at_number
@@ -130,7 +135,6 @@ class CallStatusWebhook(APIView):
                 direction = 'inbound'
                 caller_number = data['callerNumber']
                 destination_number = at_number
-                # Find which user this AT number is assigned to
                 try:
                     receiver = PhoneNumber.objects.get(number=at_number).assigned_to
                 except PhoneNumber.DoesNotExist:
@@ -141,51 +145,83 @@ class CallStatusWebhook(APIView):
                 destination_number = data.get('destinationNumber', '')
                 receiver = None
 
-            # Prepare defaults for call log
-            defaults = {
+            # Map call states
+            call_state = data.get('callSessionState', 'unknown').lower()
+            status_mapping = {
+                'new': 'queued',
+                'ringing': 'ringing',
+                'answered': 'active',
+                'completed': 'completed',
+                'failed': 'failed',
+                'busy': 'busy',
+                'timeout': 'no-answer'
+            }
+            call_status = status_mapping.get(call_state, 'unknown')
+
+            # Prepare call data for Celery task
+            call_data = {
+                'session_id': session_id,
                 'caller_number': caller_number,
                 'destination_number': destination_number,
                 'direction': direction,
-                'status': data.get('callSessionState', 'unknown').lower(),
+                'status': call_status,
                 'hangup_cause': data.get('hangupCause'),
-                'start_time': timezone.now()
+                'start_time': timezone.now().isoformat(),
+                'duration': int(data['durationInSeconds']) if 'durationInSeconds' in data else None,
+                'receiver_id': receiver.id if receiver else None
             }
 
-            # Set receiver for inbound calls
-            if direction == 'inbound':
-                defaults['receiver'] = receiver
-
-            # Update or create call log
-            call_log, created = CallLog.objects.update_or_create(
-                session_id=session_id,
-                defaults=defaults
-            )
-
-            # Update end time if call completed
-            if call_log.status in ['completed', 'failed', 'no-answer', 'busy']:
-                call_log.end_time = timezone.now()
-                if 'durationInSeconds' in data:
-                    call_log.duration = int(data['durationInSeconds'])
-                call_log.save()
-
-            # WebSocket notification
-            channel_layer = get_channel_layer()
-            async_to_sync(channel_layer.group_send)(
-                f'call_status_{session_id}',
-                {
-                    'type': 'call_status_message',
-                    'message': {
-                        'status': call_log.status,
-                        'direction': direction,
-                        'session_id': session_id
-                    }
+            # Queue the database operation via Celery
+            update_call_log.delay(
+                session_id=call_data['session_id'],
+                defaults={
+                    'caller_number': call_data['caller_number'],
+                    'destination_number': call_data['destination_number'],
+                    'direction': call_data['direction'],
+                    'status': call_data['status'],
+                    'hangup_cause': call_data.get('hangup_cause'),
+                    'start_time': call_data.get('start_time'),
+                    'duration': call_data.get('duration'),
+                    'receiver_id': call_data.get('receiver_id')
                 }
             )
 
-            return Response({"status": "success"}, status=status.HTTP_200_OK)
+            # Send WebSocket notifications immediately (non-database operations)
+            async_to_sync(channel_layer.group_send)(
+                f'call_{session_id}',
+                {
+                    'type': 'call.status.update',
+                    'session_id': session_id,
+                    'status': call_status,
+                    'direction': direction,
+                    'caller_number': caller_number,
+                    'timestamp': str(timezone.now()),
+                    'duration': call_data.get('duration')
+                }
+            )
+
+            async_to_sync(channel_layer.group_send)(
+                'call_monitor',
+                {
+                    'type': 'call.activity',
+                    'event': 'status_change',
+                    'session_id': session_id,
+                    'status': call_status
+                }
+            )
+
+            return Response({"status": "processing"}, status=status.HTTP_202_ACCEPTED)
 
         except Exception as e:
-            logger.error(f"Error in webhook: {str(e)}", exc_info=True)
+            logger.error(f"Webhook processing error: {str(e)}", exc_info=True)
+            async_to_sync(channel_layer.group_send)(
+                'errors',
+                {
+                    'type': 'system.error',
+                    'error': 'webhook_failure',
+                    'message': str(e)
+                }
+            )
             return Response({"error": "Internal server error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class UserCallHistoryView(APIView):
@@ -233,16 +269,75 @@ class AnswerCallView(APIView):
 
     def post(self, request):
         session_id = request.data.get('session_id')
-        # logic to answer the call via AT API
-        return Response({"status": "success"})
+        try:
+            # Get the call and verify the requesting user is the receiver
+            call = CallLog.objects.get(
+                session_id=session_id,
+                receiver=request.user,
+                status__in=['ringing', 'queued']
+            )
+            
+            # Update call status
+            call.status = 'active'
+            call.start_time = timezone.now()
+            call.save()
+            
+            # Notify via WebSocket
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f'call_{session_id}',
+                {
+                    'type': 'call.answered',
+                    'session_id': session_id,
+                    'status': 'active'
+                }
+            )
+            
+            return Response({"status": "success"})
+            
+        except CallLog.DoesNotExist:
+            return Response({"error": "Call not found or unauthorized"}, status=404)
+        except Exception as e:
+            logger.error(f"Error answering call: {str(e)}")
+            return Response({"error": "Internal server error"}, status=500)
 
 class EndCallView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
         session_id = request.data.get('session_id')
-        # Your logic to end the call via AT API
-        return Response({"status": "success"})
+        try:
+            call = CallLog.objects.get(
+                Q(session_id=session_id) & 
+                (Q(caller=request.user) | Q(receiver=request.user)),
+                status__in=['active', 'ringing']
+            )
+            
+            # Update call status
+            call.status = 'completed'
+            call.end_time = timezone.now()
+            if call.start_time:
+                call.duration = (call.end_time - call.start_time).seconds
+            call.save()
+            
+            # Notify via WebSocket
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f'call_{session_id}',
+                {
+                    'type': 'call.ended',
+                    'session_id': session_id,
+                    'status': 'completed'
+                }
+            )
+            
+            return Response({"status": "success"})
+            
+        except CallLog.DoesNotExist:
+            return Response({"error": "Call not found or unauthorized"}, status=404)
+        except Exception as e:
+            logger.error(f"Error ending call: {str(e)}")
+            return Response({"error": "Internal server error"}, status=500)
 
 class IncomingCallsView(APIView):
     permission_classes = [IsAuthenticated]
@@ -254,14 +349,74 @@ class IncomingCallsView(APIView):
         ).order_by('-start_time')
         serializer = CallLogSerializer(calls, many=True)
         return Response(serializer.data)
+    
+class CallQueueView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        waiting_calls = QueuedCall.objects.filter(status='waiting').order_by('timestamp')
+        serializer = QueuedCallSerializer(waiting_calls, many=True) 
+        return Response(serializer.data)
 
+class AgentStatusView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        is_available = request.data.get('is_available', True)
+        AgentStatus.objects.update_or_create(
+            user=request.user,
+            defaults={'is_available': is_available}
+        )
+        return Response({"status": "success"})
+    
 class IVRHandler(APIView):
     def post(self, request):
         response = """<?xml version="1.0"?>
         <Response>
             <Dial phoneNumbers="+254705479844" record="false"/>
         </Response>"""
-        return HttpResponse(response, content_type="application/xml")
+        return HttpResponse(response, content_type="application/xml")  
+
+# class IVRHandler(APIView):
+#     def post(self, request):
+#         logger.info(f"Raw IVR request data: {request.data}")
+#         try:
+#             data = request.data
+#             logger.info(f"Processed IVR data: {data}")
+#             caller_number = data.get('callerNumber')
+#             session_id = data.get('sessionId')
+            
+#             # First check if this call is already in queue
+#             if QueuedCall.objects.filter(session_id=session_id).exists():
+#                 return HttpResponse("""<Response><Reject/></Response>""", content_type="application/xml")
+            
+#             # Check if agents are available
+#             available_agents = AgentStatus.objects.filter(is_available=True)
+            
+#             if available_agents.exists():
+#                 # Route to available agent
+#                 agent = available_agents.first()
+#                 response = f"""<?xml version="1.0"?>
+#                 <Response>
+#                     <Dial phoneNumbers="{agent.user.phone_numbers.first().number}" record="true"/>
+#                 </Response>"""
+#             else:
+#                 # Add to queue
+#                 QueuedCall.objects.create(
+#                     session_id=session_id,
+#                     caller_number=caller_number
+#                 )
+#                 response = """<?xml version="1.0"?>
+#                 <Response>
+#                     <Say>All our agents are busy. Please hold.</Say>
+#                     <Play>waiting_music.mp3</Play>
+#                 </Response>"""
+                
+#             return HttpResponse(response, content_type="application/xml")
+            
+#         except Exception as e:
+#             logger.error(f"IVR error: {str(e)}")
+#             return HttpResponse("""<Response><Reject/></Response>""", content_type="application/xml")
 
 # redirects call to the specified number i.e. +254705479844 in this case
 # class IVRHandler(APIView):

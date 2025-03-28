@@ -75,3 +75,20 @@ class PhoneNumber(models.Model):
 
     def __str__(self):
         return self.number
+    
+class QueuedCall(models.Model):
+    session_id = models.CharField(max_length=100, unique=True)
+    caller_number = models.CharField(max_length=20)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=20, default='waiting')
+    
+    def __str__(self):
+        return f"{self.caller_number} - {self.status}"
+    
+class AgentStatus(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    is_available = models.BooleanField(default=True)
+    last_active = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"{self.user.username} - {'Available' if self.is_available else 'Busy'}"

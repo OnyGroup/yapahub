@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import CallLog, CallbackURL, PhoneNumber
+from .models import CallLog, CallbackURL, PhoneNumber, QueuedCall
 from django.contrib.auth.models import User
 
 class UserMinimalSerializer(serializers.ModelSerializer):
@@ -61,6 +61,11 @@ class CallbackURLSerializer(serializers.ModelSerializer):
 
 class MakeCallSerializer(serializers.Serializer):
     phone_number = serializers.CharField(max_length=20)
+
+class QueuedCallSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = QueuedCall 
+        fields = ['session_id', 'caller_number', 'timestamp', 'status']
 
 class CallStatusSerializer(serializers.Serializer):
     """Serializer for receiving call status callbacks"""
