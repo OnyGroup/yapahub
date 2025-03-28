@@ -368,55 +368,71 @@ class AgentStatusView(APIView):
             defaults={'is_available': is_available}
         )
         return Response({"status": "success"})
-    
-class IVRHandler(APIView):
-    def post(self, request):
-        response = """<?xml version="1.0"?>
-        <Response>
-            <Dial phoneNumbers="+254705479844" record="false"/>
-        </Response>"""
-        return HttpResponse(response, content_type="application/xml")  
 
+# this works but the call is redirected
 # class IVRHandler(APIView):
 #     def post(self, request):
-#         logger.info(f"Raw IVR request data: {request.data}")
-#         try:
-#             data = request.data
-#             logger.info(f"Processed IVR data: {data}")
-#             caller_number = data.get('callerNumber')
-#             session_id = data.get('sessionId')
+#         response = """<?xml version="1.0"?>
+#         <Response>
+#             <Dial phoneNumbers="+254705479844" record="false"/>
+#         </Response>"""
+#         return HttpResponse(response, content_type="application/xml")  
+
+class IVRHandler(APIView):
+    def post(self, request):
+        logger.info(f"Raw IVR request data: {request.data}")
+        try:
+            data = request.data
+            logger.info(f"Processed IVR data: {data}")
+            caller_number = data.get('callerNumber')
+            session_id = data.get('sessionId')
+            direction = data.get('direction', '').lower()
             
-#             # First check if this call is already in queue
-#             if QueuedCall.objects.filter(session_id=session_id).exists():
-#                 return HttpResponse("""<Response><Reject/></Response>""", content_type="application/xml")
+            # First check if this call is already in queue
+            if QueuedCall.objects.filter(session_id=session_id).exists():
+                return HttpResponse("""<Response><Reject/></Response>""", content_type="application/xml")
             
-#             # Check if agents are available
-#             available_agents = AgentStatus.objects.filter(is_available=True)
+            # Check if agents are available
+            available_agents = AgentStatus.objects.filter(is_available=True)
             
-#             if available_agents.exists():
-#                 # Route to available agent
-#                 agent = available_agents.first()
-#                 response = f"""<?xml version="1.0"?>
-#                 <Response>
-#                     <Dial phoneNumbers="{agent.user.phone_numbers.first().number}" record="true"/>
-#                 </Response>"""
-#             else:
-#                 # Add to queue
-#                 QueuedCall.objects.create(
-#                     session_id=session_id,
-#                     caller_number=caller_number
-#                 )
-#                 response = """<?xml version="1.0"?>
-#                 <Response>
-#                     <Say>All our agents are busy. Please hold.</Say>
-#                     <Play>waiting_music.mp3</Play>
-#                 </Response>"""
+            if available_agents.exists():
+                # Answer the call with immediate response
+                response = """<?xml version="1.0"?>
+                <Response>
+                    <Say voice="woman">Thank you for calling. Please wait while we connect you.</Say>
+                    <Dial phoneNumbers="{}" record="true" callerId="{}"/>
+                </Response>""".format(
+                    settings.AFRICASTALKING_CALLER_ID, 
+                    settings.AFRICASTALKING_CALLER_ID 
+                )
+            else:
+                # Add to queue
+                queued_call = QueuedCall.create_queued_call(
+                    session_id=session_id,
+                    caller_number=caller_number
+                )
+                if not queued_call:
+                    logger.error("Failed to queue call")
+                    return HttpResponse("""<Response><Reject/></Response>""", 
+                                    content_type="application/xml")
+                response = """<?xml version="1.0"?>
+                <Response>
+                    <Say voice="woman">All our agents are busy. Please hold.</Say>
+                    <Play>waiting_music.mp3</Play>
+                </Response>"""
                 
-#             return HttpResponse(response, content_type="application/xml")
+            return HttpResponse(response, content_type="application/xml")
             
-#         except Exception as e:
-#             logger.error(f"IVR error: {str(e)}")
-#             return HttpResponse("""<Response><Reject/></Response>""", content_type="application/xml")
+        except Exception as e:
+            logger.error(f"IVR error: {str(e)}", exc_info=True)
+            # Fallback to simple answer if something fails
+            return HttpResponse("""<?xml version="1.0"?>
+                <Response>
+                    <Say>Welcome to our service</Say>
+                    <Dial phoneNumbers="{}" record="false"/>
+                </Response>""".format(settings.AFRICASTALKING_CALLER_ID),
+                content_type="application/xml"
+            )
 
 # redirects call to the specified number i.e. +254705479844 in this case
 # class IVRHandler(APIView):

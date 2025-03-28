@@ -1,6 +1,12 @@
-from django.db import models
+from django.db import models, IntegrityError
 from django.contrib.auth.models import User
 from django.utils import timezone
+import uuid
+import logging
+logger = logging.getLogger(__name__)
+
+def generate_session_id():
+    return str(uuid.uuid4())
 
 class CallLog(models.Model):
     STATUS_CHOICES = (
@@ -77,13 +83,59 @@ class PhoneNumber(models.Model):
         return self.number
     
 class QueuedCall(models.Model):
-    session_id = models.CharField(max_length=100, unique=True)
-    caller_number = models.CharField(max_length=20)
-    timestamp = models.DateTimeField(auto_now_add=True)
-    status = models.CharField(max_length=20, default='waiting')
+    session_id = models.CharField(
+        max_length=100,
+        unique=True,
+        blank=False,
+        null=False,
+        default=generate_session_id,  # Using named function instead of lambda
+        help_text="Unique call session identifier"
+    )
+    caller_number = models.CharField(
+        max_length=20,
+        blank=True,
+        default='unknown_caller',
+        help_text="Caller's phone number"
+    )
+    timestamp = models.DateTimeField(
+        auto_now_add=True,
+        help_text="When the call was queued"
+    )
+    status = models.CharField(
+        max_length=20,
+        default='waiting',
+        choices=[
+            ('waiting', 'Waiting'),
+            ('processing', 'Processing'),
+            ('completed', 'Completed'),
+            ('failed', 'Failed')
+        ],
+        help_text="Current status of the queued call"
+    )
+    
+    class Meta:
+        verbose_name = "Queued Call"
+        verbose_name_plural = "Queued Calls"
+        ordering = ['timestamp']
+        indexes = [
+            models.Index(fields=['session_id']),
+            models.Index(fields=['status']),
+        ]
     
     def __str__(self):
         return f"{self.caller_number} - {self.status}"
+
+    @classmethod
+    def create_queued_call(cls, session_id=None, caller_number=None):
+        """Safe method to create queued calls with validation"""
+        try:
+            return cls.objects.create(
+                session_id=session_id or generate_session_id(),
+                caller_number=caller_number or 'unknown_caller'
+            )
+        except IntegrityError:
+            logger.warning(f"Duplicate session_id detected: {session_id}")
+            return cls.objects.filter(session_id=session_id).first()
     
 class AgentStatus(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
