@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import CallLog, CallbackURL, PhoneNumber
+from .models import CallLog, CallbackURL, PhoneNumber, QueuedCall
 from django.contrib.auth.models import User
 
 class UserMinimalSerializer(serializers.ModelSerializer):
@@ -43,7 +43,7 @@ class CallLogSerializer(serializers.ModelSerializer):
         model = CallLog
         fields = [
             'id', 'session_id', 'caller', 'caller_id', 'receiver', 'receiver_id',
-            'phone_number', 'direction', 'start_time', 'end_time',
+            'caller_number', 'destination_number', 'direction', 'start_time', 'end_time',
             'duration', 'duration_formatted', 'status', 'notes'
         ]
 
@@ -62,9 +62,22 @@ class CallbackURLSerializer(serializers.ModelSerializer):
 class MakeCallSerializer(serializers.Serializer):
     phone_number = serializers.CharField(max_length=20)
 
+class QueuedCallSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = QueuedCall 
+        fields = ['session_id', 'caller_number', 'timestamp', 'status']
+
 class CallStatusSerializer(serializers.Serializer):
     """Serializer for receiving call status callbacks"""
+    isActive = serializers.CharField(required=False)
     sessionId = serializers.CharField()
-    status = serializers.CharField()
-    phoneNumber = serializers.CharField()
-    duration = serializers.IntegerField(required=False)
+    direction = serializers.CharField(required=False)
+    destinationNumber = serializers.CharField(required=False)
+    callerNumber = serializers.CharField()  # Use callerNumber instead of phoneNumber
+    callerCountryCode = serializers.CharField(required=False)
+    callStartTime = serializers.CharField(required=False)
+    durationInSeconds = serializers.CharField(required=False)
+    currencyCode = serializers.CharField(required=False)
+    amount = serializers.CharField(required=False)
+    callSessionState = serializers.CharField(required=False)
+    hangupCause = serializers.CharField(required=False)

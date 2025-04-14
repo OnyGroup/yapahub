@@ -22,6 +22,8 @@ CALLBACK_URL = config('AFRICASTALKING_CALLBACK_URL', default='https://voice.afri
 AFRICASTALKING_USERNAME = 'test_murithi'
 AFRICASTALKING_API_KEY = config('AFRICASTALKING_API_KEY')
 AFRICASTALKING_CALLER_ID = "+254711082986"
+CALL_QUEUE_TIMEOUT = 300  # 5 min
+MAX_CALL_DURATION = 1800  # 30 min
 SIP_USERNAME = config('SIP_USERNAME', default='test_murithi')
 SIP_PASSWORD = config('SIP_PASSWORD', default='123456')
 
@@ -35,7 +37,7 @@ ALLOWED_HOSTS = [
     "127.0.0.1",
     "localhost",
     "yapahub.com",
-    "ee52-41-90-188-199.ngrok-free.app"  # Ngrok URL
+    "4b36-41-90-186-185.ngrok-free.app"  # Ngrok URL
 ]
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
@@ -83,8 +85,11 @@ INSTALLED_APPS = [
 ]
 
 CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels.layers.InMemoryChannelLayer",
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [('127.0.0.1', 6379)],
+        },
     },
 }
 
@@ -121,19 +126,28 @@ WSGI_APPLICATION = 'server.wsgi.application'
 ASGI_APPLICATION = "server.asgi.application"
 
 
-# Database
-# https://docs.djangoproject.com/en/5.0/ref/settings/#databases
-
+# sqlite config
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
+        'OPTIONS': {
+            'timeout': 30, 
+        }
     }
 }
 
-
-# Password validation
-# https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
+# PostgreSQL config
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': 'yapa_db',       # Database name
+#         'USER': 'admin_user',      # PostgreSQL username
+#         'PASSWORD': 'adminpass123',       # PostgreSQL password
+#         'HOST': 'localhost',               # Or database server IP
+#         'PORT': '5432',                    # Default PostgreSQL port
+#     }
+# }
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -184,6 +198,7 @@ REST_FRAMEWORK = {
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # Local Next.js
     "https://yapahub.com",  # Yapa Hub 
+    "https://4b36-41-90-186-185.ngrok-free.app", # Ngrok URL
 ]
 
 # Allow credentials
@@ -218,3 +233,6 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'UTC'
+CELERY_TASK_ACKS_LATE = True  # Helps with retries
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+CELERY_TASK_REJECT_ON_WORKER_LOST = True

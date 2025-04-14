@@ -2,18 +2,26 @@ import africastalking
 import re
 from django.conf import settings
 from django.utils import timezone
+from django.db.models import Q
+from django.db import connection
 from django.contrib.auth import get_user_model
 from rest_framework import viewsets, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from .models import CallLog, CallbackURL, PhoneNumber
+from .models import CallLog, CallbackURL, PhoneNumber, QueuedCall, AgentStatus
 from .serializers import (
     CallLogSerializer, CallbackURLSerializer, PhoneNumberSerializer,
-    MakeCallSerializer, CallStatusSerializer
+    MakeCallSerializer, CallStatusSerializer, QueuedCallSerializer
 )
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
+from .tasks import update_call_log
+
+import logging
+from django.utils.timezone import now as timezone_now
+logger = logging.getLogger(__name__)
+from django.http import HttpResponse
 
 User = get_user_model()
 
@@ -69,21 +77,19 @@ class MakeCallView(APIView):
                 )
 
             try:
-                # Get active callback URL
-                callback_url = CallbackURL.objects.filter(is_active=True).first()
-                if not callback_url:
-                    callback_url = settings.CALLBACK_URL
-
                 # Make the call using Africa's Talking Voice API
                 response = voice.call(
                     callFrom=settings.AFRICASTALKING_CALLER_ID,
                     callTo=[phone_number]
                 )
+                logger.info(f"Africa's Talking API response: {response}")
 
-                # Log the call
+                # Log the outbound call
                 call_log = CallLog.objects.create(
                     session_id=response['entries'][0]['sessionId'],
-                    phone_number=phone_number,
+                    caller_number=settings.AFRICASTALKING_CALLER_ID,
+                    destination_number=phone_number,
+                    direction='outbound',
                     status="queued",
                     caller=request.user
                 )
@@ -95,53 +101,128 @@ class MakeCallView(APIView):
                 }, status=status.HTTP_201_CREATED)
 
             except Exception as e:
-                return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                logger.error(f"Error initiating call: {str(e)}")
+                return Response({"error": f"Error initiating call: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class CallStatusWebhook(APIView):
     """Webhook to receive call status updates from Africa's Talking"""
-    permission_classes = []  # No authentication for webhook
+    permission_classes = []
 
     def post(self, request):
-        serializer = CallStatusSerializer(data=request.data)
-        if serializer.is_valid():
-            session_id = serializer.validated_data['sessionId']
-            call_status = serializer.validated_data['status']
+        channel_layer = get_channel_layer()
+        try:
+            # Log the incoming request data for debugging
+            logger.info(f"Incoming webhook data: {request.data}")
+            
+            serializer = CallStatusSerializer(data=request.data)
+            if not serializer.is_valid():
+                logger.error(f"Validation errors: {serializer.errors}")
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-            try:
-                call_log = CallLog.objects.get(session_id=session_id)
-                call_log.status = call_status.lower()
+            data = serializer.validated_data
+            session_id = data['sessionId']
+            at_number = settings.AFRICASTALKING_CALLER_ID
 
-                # If call is completed, update end time and duration
-                if call_status.lower() in ['completed', 'failed', 'no-answer', 'busy']:
-                    call_log.end_time = timezone.now()
-                    if serializer.validated_data.get('duration'):
-                        call_log.duration = serializer.validated_data.get('duration')
-                    else:
-                        call_log.calculate_duration()
+            # Determine call direction and participants
+            if data.get('direction', '').lower() == 'outbound':
+                direction = 'outbound'
+                caller_number = at_number
+                destination_number = data['callerNumber']
+                receiver = None
+            elif data['callerNumber'] != at_number:
+                direction = 'inbound'
+                caller_number = data['callerNumber']
+                destination_number = at_number
+                try:
+                    receiver = PhoneNumber.objects.get(number=at_number).assigned_to
+                except PhoneNumber.DoesNotExist:
+                    receiver = None
+            else:
+                direction = 'outbound'
+                caller_number = at_number
+                destination_number = data.get('destinationNumber', '')
+                receiver = None
 
-                call_log.save()
+            # Map call states
+            call_state = data.get('callSessionState', 'unknown').lower()
+            status_mapping = {
+                'new': 'queued',
+                'ringing': 'ringing',
+                'answered': 'active',
+                'completed': 'completed',
+                'failed': 'failed',
+                'busy': 'busy',
+                'timeout': 'no-answer'
+            }
+            call_status = status_mapping.get(call_state, 'unknown')
 
-                # Send real-time update to WebSocket
-                channel_layer = get_channel_layer()
-                async_to_sync(channel_layer.group_send)(
-                    f'call_status_{session_id}',
-                    {
-                        'type': 'call_status_message',
-                        'message': call_status
-                    }
-                )
+            # Prepare call data for Celery task
+            call_data = {
+                'session_id': session_id,
+                'caller_number': caller_number,
+                'destination_number': destination_number,
+                'direction': direction,
+                'status': call_status,
+                'hangup_cause': data.get('hangupCause'),
+                'start_time': timezone.now().isoformat(),
+                'duration': int(data['durationInSeconds']) if 'durationInSeconds' in data else None,
+                'receiver_id': receiver.id if receiver else None
+            }
 
-                return Response({"status": "success"}, status=status.HTTP_200_OK)
+            # Queue the database operation via Celery
+            update_call_log.delay(
+                session_id=call_data['session_id'],
+                defaults={
+                    'caller_number': call_data['caller_number'],
+                    'destination_number': call_data['destination_number'],
+                    'direction': call_data['direction'],
+                    'status': call_data['status'],
+                    'hangup_cause': call_data.get('hangup_cause'),
+                    'start_time': call_data.get('start_time'),
+                    'duration': call_data.get('duration'),
+                    'receiver_id': call_data.get('receiver_id')
+                }
+            )
 
-            except CallLog.DoesNotExist:
-                return Response(
-                    {"error": "Call session not found"},
-                    status=status.HTTP_404_NOT_FOUND
-                )
+            # Send WebSocket notifications immediately (non-database operations)
+            async_to_sync(channel_layer.group_send)(
+                f'call_{session_id}',
+                {
+                    'type': 'call.status.update',
+                    'session_id': session_id,
+                    'status': call_status,
+                    'direction': direction,
+                    'caller_number': caller_number,
+                    'timestamp': str(timezone.now()),
+                    'duration': call_data.get('duration')
+                }
+            )
 
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            async_to_sync(channel_layer.group_send)(
+                'call_monitor',
+                {
+                    'type': 'call.activity',
+                    'event': 'status_change',
+                    'session_id': session_id,
+                    'status': call_status
+                }
+            )
+
+            return Response({"status": "processing"}, status=status.HTTP_202_ACCEPTED)
+
+        except Exception as e:
+            logger.error(f"Webhook processing error: {str(e)}", exc_info=True)
+            async_to_sync(channel_layer.group_send)(
+                'errors',
+                {
+                    'type': 'system.error',
+                    'error': 'webhook_failure',
+                    'message': str(e)
+                }
+            )
+            return Response({"error": "Internal server error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class UserCallHistoryView(APIView):
     """Get call history for current authenticated user"""
@@ -149,6 +230,242 @@ class UserCallHistoryView(APIView):
 
     def get(self, request):
         user = request.user
-        calls = CallLog.objects.filter(caller=user).order_by('-start_time')
+        
+        # Get all phone numbers assigned to this user
+        user_phone_numbers = PhoneNumber.objects.filter(
+            assigned_to=user
+        ).values_list('number', flat=True)
+        
+        # Get the primary AT number assigned to user
+        at_number_assigned = settings.AFRICASTALKING_CALLER_ID in user_phone_numbers
+
+        # Build the query
+        query = Q(caller=user) | Q(receiver=user)
+        
+        # If user owns the AT number, include all calls to/from that number
+        if at_number_assigned:
+            query |= Q(caller_number=settings.AFRICASTALKING_CALLER_ID)
+            query |= Q(destination_number=settings.AFRICASTALKING_CALLER_ID)
+        else:
+            # Otherwise just include calls involving their other numbers
+            query |= Q(caller_number__in=user_phone_numbers)
+            query |= Q(destination_number__in=user_phone_numbers)
+
+        calls = CallLog.objects.filter(query).order_by('-start_time')
         serializer = CallLogSerializer(calls, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+class CallerIdView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        return Response({
+            'caller_id': settings.AFRICASTALKING_CALLER_ID
+        })
+
+# new views
+class AnswerCallView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        session_id = request.data.get('session_id')
+        try:
+            # Get the call and verify the requesting user is the receiver
+            call = CallLog.objects.get(
+                session_id=session_id,
+                receiver=request.user,
+                status__in=['ringing', 'queued']
+            )
+            
+            # Update call status
+            call.status = 'active'
+            call.start_time = timezone.now()
+            call.save()
+            
+            # Notify via WebSocket
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f'call_{session_id}',
+                {
+                    'type': 'call.answered',
+                    'session_id': session_id,
+                    'status': 'active'
+                }
+            )
+            
+            return Response({"status": "success"})
+            
+        except CallLog.DoesNotExist:
+            return Response({"error": "Call not found or unauthorized"}, status=404)
+        except Exception as e:
+            logger.error(f"Error answering call: {str(e)}")
+            return Response({"error": "Internal server error"}, status=500)
+
+class EndCallView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        session_id = request.data.get('session_id')
+        try:
+            call = CallLog.objects.get(
+                Q(session_id=session_id) & 
+                (Q(caller=request.user) | Q(receiver=request.user)),
+                status__in=['active', 'ringing']
+            )
+            
+            # Update call status
+            call.status = 'completed'
+            call.end_time = timezone.now()
+            if call.start_time:
+                call.duration = (call.end_time - call.start_time).seconds
+            call.save()
+            
+            # Notify via WebSocket
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f'call_{session_id}',
+                {
+                    'type': 'call.ended',
+                    'session_id': session_id,
+                    'status': 'completed'
+                }
+            )
+            
+            return Response({"status": "success"})
+            
+        except CallLog.DoesNotExist:
+            return Response({"error": "Call not found or unauthorized"}, status=404)
+        except Exception as e:
+            logger.error(f"Error ending call: {str(e)}")
+            return Response({"error": "Internal server error"}, status=500)
+
+class IncomingCallsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        calls = CallLog.objects.filter(
+            direction='inbound',
+            receiver=request.user
+        ).order_by('-start_time')
+        serializer = CallLogSerializer(calls, many=True)
+        return Response(serializer.data)
+    
+class CallQueueView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        waiting_calls = QueuedCall.objects.filter(status='waiting').order_by('timestamp')
+        serializer = QueuedCallSerializer(waiting_calls, many=True) 
+        return Response(serializer.data)
+
+class AgentStatusView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        is_available = request.data.get('is_available', True)
+        AgentStatus.objects.update_or_create(
+            user=request.user,
+            defaults={'is_available': is_available}
+        )
+        return Response({"status": "success"})
+
+# this works but the call is redirected
+# class IVRHandler(APIView):
+#     def post(self, request):
+#         response = """<?xml version="1.0"?>
+#         <Response>
+#             <Dial phoneNumbers="+254705479844" record="false"/>
+#         </Response>"""
+#         return HttpResponse(response, content_type="application/xml")  
+
+class RecordingCallback(APIView):
+    def post(self, request):
+        recording_url = request.data.get('recordingUrl')
+        # Process recording...
+        return HttpResponse("""<Response/>""", content_type="application/xml")
+
+class IVRHandler(APIView):
+    def post(self, request):
+        logger.info(f"Raw IVR request data: {request.data}")
+        try:
+            data = request.data
+            logger.info(f"Full request data: {data}")  # Log all received data
+            
+            # Check if this is an active call session
+            is_active = data.get('isActive', '0') == '1'
+            
+            if not is_active:
+                # Handle call completion notification
+                session_id = data.get('sessionId', 'unknown_session')
+                logger.info(f"Call session completed: {session_id}")
+                return HttpResponse("""<Response/>""", content_type="application/xml")
+            
+            # Get required parameters with fallbacks
+            session_id = data.get('sessionId') or f"temp_{timezone.now().timestamp()}"
+            caller_number = data.get('callerNumber', 'unknown_caller')
+            direction = data.get('direction', 'inbound').lower()
+            
+            logger.info(f"Processing call - Session: {session_id}, Caller: {caller_number}, Direction: {direction}")
+            
+            # Check if call is already in queue
+            if QueuedCall.objects.filter(session_id=session_id).exists():
+                logger.warning(f"Duplicate session detected: {session_id}")
+                return HttpResponse("""<Response><Reject/></Response>""", 
+                                 content_type="application/xml")
+            
+            # Check agent availability with your AT number
+            at_number = settings.AFRICASTALKING_CALLER_ID
+            available_agents = AgentStatus.objects.filter(
+                is_available=True,
+                user__phone_numbers__number=at_number
+            ).exists()
+            
+            if available_agents:
+                logger.info(f"Agent available for session: {session_id}")
+                response = f"""<?xml version="1.0"?>
+                <Response>
+                    <Say voice="woman">Thank you for calling. Connecting you now.</Say>
+                    <Dial phoneNumbers="{at_number}" record="true" callerId="{at_number}"/>
+                </Response>"""
+            else:
+                logger.info(f"No agents available, queuing call: {session_id}")
+                QueuedCall.objects.create(
+                    session_id=session_id,
+                    caller_number=caller_number,
+                    status='waiting'
+                )
+                response = """<?xml version="1.0"?>
+                <Response>
+                    <Say voice="woman">All our agents are busy. Please hold.</Say>
+                    <Play url="https://raw.githubusercontent.com/OnyGroup/yapahub/4e2160c6e77970c72abd0dcee1b6423d4678ff59/client/public/sounds/waiting_music.wav"/>
+                </Response>"""
+                
+            return HttpResponse(response, content_type="application/xml")
+            
+        except Exception as e:
+            logger.error(f"IVR processing error: {str(e)}", exc_info=True)
+            # Fallback response that always works
+            return HttpResponse("""<?xml version="1.0"?>
+                <Response>
+                    <Say>Welcome to our service. Please try again later.</Say>
+                    <Reject/>
+                </Response>""",
+                content_type="application/xml"
+            )
+
+# redirects call to the specified number i.e. +254705479844 in this case
+# class IVRHandler(APIView):
+#     def post(self, request):
+#         is_active = request.data.get('isActive') == '1'
+
+#         if is_active:
+#             response = """<?xml version="1.0"?>
+#             <Response>
+#                 <Dial phoneNumbers="+254705479844" sequential="true"/>
+#             </Response>"""
+#         else:
+#             response = """<?xml version="1.0"?>
+#             <Response>
+#                 <Reject reason="busy"/>
+#             </Response>"""
+#         return HttpResponse(response, content_type="application/xml")

@@ -1,6 +1,7 @@
 import axios from "axios";
 
 const API_BASE_URL = "http://127.0.0.1:8000";
+const WS_BASE_URL = "ws://127.0.0.1:8001";   // WebSocket connections
 
 // Create an Axios instance
 const api = axios.create({
@@ -26,4 +27,4 @@ api.interceptors.request.use(
   }
 );
 
-export default api;
+export { api, WS_BASE_URL };

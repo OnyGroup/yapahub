@@ -1,4 +1,4 @@
-import api from "../utils/api";
+import { api } from "../utils/api";
 import { RegisterUserData, LoginUserData, AuthResponse } from "../types/auth";
 
 export const registerUser = async (userData: RegisterUserData): Promise<AuthResponse> => {
