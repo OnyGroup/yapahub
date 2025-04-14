@@ -378,7 +378,6 @@ class AgentStatusView(APIView):
 #         </Response>"""
 #         return HttpResponse(response, content_type="application/xml")  
 
-# Add this to your views.py
 class RecordingCallback(APIView):
     def post(self, request):
         recording_url = request.data.get('recordingUrl')
@@ -390,42 +389,51 @@ class IVRHandler(APIView):
         logger.info(f"Raw IVR request data: {request.data}")
         try:
             data = request.data
-            is_active = data.get('isActive') == '1'
-            session_id = data.get('sessionId')
-            direction = data.get('direction', '').lower()
-            caller_number = data.get('callerNumber')
+            logger.info(f"Full request data: {data}")  # Log all received data
+            
+            # Check if this is an active call session
+            is_active = data.get('isActive', '0') == '1'
             
             if not is_active:
-                logger.info(f"Call session {session_id} completed")
+                # Handle call completion notification
+                session_id = data.get('sessionId', 'unknown_session')
+                logger.info(f"Call session completed: {session_id}")
                 return HttpResponse("""<Response/>""", content_type="application/xml")
             
-            # Validate we have required fields
-            if not session_id:
-                logger.error("Missing sessionId in request data")
+            # Get required parameters with fallbacks
+            session_id = data.get('sessionId') or f"temp_{timezone.now().timestamp()}"
+            caller_number = data.get('callerNumber', 'unknown_caller')
+            direction = data.get('direction', 'inbound').lower()
+            
+            logger.info(f"Processing call - Session: {session_id}, Caller: {caller_number}, Direction: {direction}")
+            
+            # Check if call is already in queue
+            if QueuedCall.objects.filter(session_id=session_id).exists():
+                logger.warning(f"Duplicate session detected: {session_id}")
                 return HttpResponse("""<Response><Reject/></Response>""", 
                                  content_type="application/xml")
             
-            # Use the safe creation method
-            queued_call = QueuedCall.create_queued_call(
-                session_id=session_id,
-                caller_number=caller_number
-            )
+            # Check agent availability with your AT number
+            at_number = settings.AFRICASTALKING_CALLER_ID
+            available_agents = AgentStatus.objects.filter(
+                is_available=True,
+                user__phone_numbers__number=at_number
+            ).exists()
             
-            if not queued_call:
-                logger.error("Failed to create queued call entry")
-                return HttpResponse("""<Response><Reject/></Response>""", 
-                                 content_type="application/xml")
-            
-            # Rest of your IVR logic...
-            available_agents = AgentStatus.objects.filter(is_available=True)
-            
-            if available_agents.exists():
-                response = """<?xml version="1.0"?>
+            if available_agents:
+                logger.info(f"Agent available for session: {session_id}")
+                response = f"""<?xml version="1.0"?>
                 <Response>
-                    <Say voice="woman">Thank you for calling. Please wait while we connect you.</Say>
-                    <Record finishOnKey="#" maxLength="3600" playBeep="true"/>
+                    <Say voice="woman">Thank you for calling. Connecting you now.</Say>
+                    <Dial phoneNumbers="{at_number}" record="true" callerId="{at_number}"/>
                 </Response>"""
             else:
+                logger.info(f"No agents available, queuing call: {session_id}")
+                QueuedCall.objects.create(
+                    session_id=session_id,
+                    caller_number=caller_number,
+                    status='waiting'
+                )
                 response = """<?xml version="1.0"?>
                 <Response>
                     <Say voice="woman">All our agents are busy. Please hold.</Say>
@@ -435,11 +443,12 @@ class IVRHandler(APIView):
             return HttpResponse(response, content_type="application/xml")
             
         except Exception as e:
-            logger.error(f"IVR error: {str(e)}", exc_info=True)
+            logger.error(f"IVR processing error: {str(e)}", exc_info=True)
+            # Fallback response that always works
             return HttpResponse("""<?xml version="1.0"?>
                 <Response>
-                    <Say>Welcome to our service</Say>
-                    <Record finishOnKey="#" maxLength="3600"/>
+                    <Say>Welcome to our service. Please try again later.</Say>
+                    <Reject/>
                 </Response>""",
                 content_type="application/xml"
             )
